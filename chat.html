@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat with Jules</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    #chat { border: 1px solid #ccc; padding: 20px; width: 400px; height: 400px; overflow-y: auto; margin-bottom: 10px; }
+    #input { width: 320px; }
+    .user { color: #0074D9; }
+    .jules { color: #B10DC9; }
+  </style>
+</head>
+<body>
+  <h1>Chat with Jules</h1>
+  <input id="token" placeholder="Paste your JWT token here" style="width: 400px;" />
+  <div id="chat"></div>
+  <input id="input" placeholder="Type your message..." />
+  <button onclick="sendMessage()">Send</button>
+  <script>
+    const chatDiv = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const tokenInput = document.getElementById('token');
+
+    function appendMessage(sender, text) {
+      const msg = document.createElement('div');
+      msg.className = sender;
+      msg.textContent = (sender === 'user' ? 'You: ' : 'Jules: ') + text;
+      chatDiv.appendChild(msg);
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = input.value;
+      const token = tokenInput.value;
+      if (!message || !token) return;
+      appendMessage('user', message);
+      input.value = '';
+      const res = await fetch('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+      appendMessage('jules', data.reply || (data.error || 'No response'));
+    }
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html> 
