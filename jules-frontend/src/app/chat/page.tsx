@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { chat } from "@/lib/api";
 import Image from "next/image";
 import { jwtDecode } from 'jwt-decode';
+import Link from 'next/link';
 
 interface Message {
   id: string;
@@ -19,9 +20,11 @@ function getUserIdFromToken() {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const decoded: any = jwtDecode(token);
-        return decoded.userId;
-      } catch (e) { return null; }
+        const decoded: unknown = jwtDecode(token);
+        if (decoded && typeof decoded === 'object' && 'userId' in decoded) {
+          return (decoded as { userId: string }).userId;
+        }
+      } catch { return null; }
     }
   }
   return null;
@@ -29,10 +32,6 @@ function getUserIdFromToken() {
 
 function safeString(val?: string): string {
   return typeof val === 'string' && val.trim() !== '' ? val : '';
-}
-
-function getAltString(val: string | undefined, fallback: string): string {
-  return typeof val === 'string' && val.trim() !== '' ? val : fallback;
 }
 
 export default function Chat() {
@@ -50,7 +49,6 @@ export default function Chat() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [imageIntro, setImageIntro] = useState<string>("");
   const [productLinks, setProductLinks] = useState<{title: string, link: string, image?: string, price?: string, description?: string}[]>([]);
   const [lastScenario, setLastScenario] = useState<string>("");
 
@@ -138,8 +136,8 @@ export default function Chat() {
       if (/show me examples|show me|visual examples|can i see|more|again|another/i.test(messageText)) {
         let scenario = lastScenario;
         // Find the last scenario or outfit advice from Jules
-        const found = [...messages].reverse().find(m => m.sender === 'jules' && /jeans|jacket|shirt|sneakers|boots|outfit|look|wear/i.test(m.text));
-        scenario = found ? found.text : messageText;
+        const found = [...messages].reverse().find(m => m.sender === 'jules' && typeof m.text === 'string' && /jeans|jacket|shirt|sneakers|boots|outfit|look|wear/i.test(m.text));
+        scenario = found && found.text ? found.text : messageText;
         setLastScenario(scenario);
         const data = await chat.sendMessage(scenario, userId);
         const julesTextMessage: Message = {
@@ -171,7 +169,6 @@ export default function Chat() {
         setMessages((prev) => [...prev, ...newMessages]);
       } else {
         setLastScenario(messageText);
-        setImageIntro("");
         setProductLinks([]);
         const data = await chat.sendMessage(messageText, userId);
         const julesTextMessage: Message = {
@@ -216,9 +213,8 @@ export default function Chat() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
       sendMessage();
     }
   };
@@ -251,12 +247,12 @@ export default function Chat() {
           >
             {voiceEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
           </button>
-          <a
+          <Link
             href="/"
             className="text-gray-500 hover:text-gray-700 transition-colors"
           >
             ← Back to Home
-          </a>
+          </Link>
         </div>
       </header>
 

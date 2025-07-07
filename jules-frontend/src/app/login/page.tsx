@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { auth } from "@/lib/api";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from 'next/link';
 
-export default function Login() {
+function LoginInner() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,8 +35,12 @@ export default function Login() {
         await auth.register(email, password, name);
         router.push("/chat");
       }
-    } catch (error: any) {
-      setError(error.message || "Authentication failed");
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'message' in error && typeof (error as { message?: string }).message === 'string') {
+        setError((error as { message?: string }).message!);
+      } else {
+        setError("Authentication failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -166,11 +171,19 @@ export default function Login() {
         </div>
 
         <div className="mt-4 text-center">
-          <a href="/" className="text-gray-500 hover:text-gray-700 text-sm">
-            ← Back to Home
-          </a>
+          <Link href="/" className="text-gray-500 hover:text-gray-700 text-sm">
+            ¹ Back to Home
+          </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginInner />
+    </Suspense>
   );
 } 

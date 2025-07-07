@@ -42,12 +42,12 @@ export default function Home() {
           <div className="flex-1 flex flex-col items-center text-center">
             <span className="text-4xl mb-2">👕</span>
             <h3 className="text-xl font-semibold mb-2 text-black">Style</h3>
-            <p className="text-gray-700">Find your fit. Dress with confidence. No more <span className="font-semibold">second-guessing</span>. Jules helps you refine your look without losing your edge—always on point.</p>
+            <p className="text-gray-700">Find your fit. Dress with confidence. No more <span className="font-semibold">second-guessing</span>. Jules helps you refine your look without losing your edge&apos;always on point.</p>
           </div>
           <div className="flex-1 flex flex-col items-center text-center">
             <span className="text-4xl mb-2">💬</span>
             <h3 className="text-xl font-semibold mb-2 text-black">Dating</h3>
-            <p className="text-gray-700">Texts, icebreakers, and moves that actually work. Jules helps you play your <span className="font-semibold">cards right</span>—with timing, tone, and confidence that doesn't feel forced.</p>
+            <p className="text-gray-700">Texts, icebreakers, and moves that actually work. Jules helps you play your <span className="font-semibold">cards right</span>—with timing, tone, and confidence that doesn&apos;t feel forced.</p>
           </div>
           <div className="flex-1 flex flex-col items-center text-center">
             <span className="text-4xl mb-2">🧠</span>
@@ -111,7 +111,7 @@ function FAQAccordion() {
     {
       question: "Why Jules? Why Now?",
       answer:
-        "We were tired of the lack of trusted resources that help men get their style, fitness, and social life together. From red-pill influencer communities to inconsistent online forumns to AI girlfriends. Men deserve more and deserve better. We all want to show up the best we can, which is why we created Jules. Jules gets to know you and your preferences and helps you navigate the real world. She'll help you deal with hard problems in a graceful way, and she'll help you show up the way you want to show up. Masculinity is a personal thing...Jules helps you define what it means for you.",
+        "We were tired of the lack of trusted resources that help men get their style, fitness, and social life together. From red-pill influencer communities to inconsistent online forumns to AI girlfriends. Men deserve more and deserve better. We all want to show up the best we can, which is why we created Jules. Jules gets to know you and your preferences and helps you navigate the real world. She&apos;ll help you deal with hard problems in a graceful way, and she&apos;ll help you show up the way you want to show up. Masculinity is a personal thing...Jules helps you define what it means for you.",
     },
     {
       question: "Is Jules just AI?",
@@ -121,7 +121,7 @@ function FAQAccordion() {
     {
       question: "Can Jules help with anything?",
       answer:
-        "Jules is about style and outfits, dating, confidence, and how you show up. She won't write your resume, but will tell you if your jacket's wrong. We're working on training Jules with clinical data so she can better help you navigate any of life's situations. For now, she's an AI friend that can help you show up better in the real world.",
+        "Jules is about style and outfits, dating, confidence, and how you show up. She won&apos;t write your resume, but will tell you if your jacket&apos;s wrong. We&apos;re working on training Jules with clinical data so she can better help you navigate any of life&apos;s situations. For now, she&apos;s an AI friend that can help you show up better in the real world.",
     },
     {
       question: "Is this for guys only?",
@@ -130,7 +130,7 @@ function FAQAccordion() {
     {
       question: "How personal does this get?",
       answer:
-        "You control what you share. Jules doesn't remember anything unless you use the advanced version, coming later.",
+        "You control what you share. Jules doesn&apos;t remember anything unless you use the advanced version, coming later.",
     },
     {
       question: "Is it free?",
