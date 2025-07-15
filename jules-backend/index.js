@@ -1,18 +1,39 @@
+console.log('Starting server...');
 require('dotenv').config();
+console.log('dotenv loaded');
+
 const express = require('express');
+console.log('express loaded');
 const mongoose = require('mongoose');
+console.log('mongoose loaded');
 const cors = require('cors');
+console.log('cors loaded');
 const app = express();
+console.log('app created');
+
+console.log('Loading routes...');
 const chatRoutes = require('./routes/chat');
+console.log('chatRoutes loaded');
 const authRoutes = require('./routes/auth');
+console.log('authRoutes loaded');
 const profileRoutes = require('./routes/profile');
+console.log('profileRoutes loaded');
 const uploadRoutes = require('./routes/upload');
+console.log('uploadRoutes loaded');
 const productsRoutes = require('./routes/products');
+console.log('productsRoutes loaded');
 const adminRoutes = require('./routes/admin');
+console.log('adminRoutes loaded');
+
 const path = require('path');
 const session = require('express-session');
+console.log('session loaded');
 const passport = require('passport');
+console.log('passport loaded');
+
+console.log('Loading passport config...');
 require('./config/passport');
+console.log('passport config loaded');
 
 app.use(express.json());
 app.use(cors());
