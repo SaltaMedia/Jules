@@ -22,8 +22,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   } catch (err) {
     return done(err, null);
   }
-}));
+  }));
+}
 
+// These should always be configured, regardless of Google OAuth
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
@@ -35,5 +37,4 @@ passport.deserializeUser(async (id, done) => {
   } catch (err) {
     done(err, null);
   }
-});
-} 
+}); 
