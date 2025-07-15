@@ -30,6 +30,25 @@ function getUserIdFromToken() {
   return null;
 }
 
+function getUserInitialFromToken() {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded: unknown = jwtDecode(token);
+        if (decoded && typeof decoded === 'object' && 'email' in decoded) {
+          const email = (decoded as { email: string }).email;
+          // Extract name from email (before the @ symbol)
+          const name = email.split('@')[0];
+          // Get first character and capitalize it
+          return name.charAt(0).toUpperCase();
+        }
+      } catch { return 'U'; }
+    }
+  }
+  return 'U';
+}
+
 function safeString(val?: string): string {
   return typeof val === 'string' && val.trim() !== '' ? val : '';
 }
@@ -271,7 +290,7 @@ export default function Chat() {
               {message.sender === "jules" ? (
                 <Image src="/jules-mvp.png" alt="Jules avatar" width={36} height={36} className="rounded-full shadow" />
               ) : (
-                <div className="w-9 h-9 bg-blue-400 text-white rounded-full flex items-center justify-center font-bold text-lg shadow">U</div>
+                <div className="w-9 h-9 bg-blue-400 text-white rounded-full flex items-center justify-center font-bold text-lg shadow">{getUserInitialFromToken()}</div>
               )}
               <div
                 className={`relative max-w-xs md:max-w-md px-4 py-2 rounded-2xl text-base shadow-sm whitespace-pre-line ${
