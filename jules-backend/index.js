@@ -36,7 +36,16 @@ require('./config/passport');
 console.log('passport config loaded');
 
 app.use(express.json());
-app.use(cors());
+
+// Configure CORS for production
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-frontend.vercel.app']
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use('/api/chat', chatRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);

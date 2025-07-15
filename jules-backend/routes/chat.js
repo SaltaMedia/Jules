@@ -3,8 +3,8 @@ const router = express.Router();
 const { handleChat, imageSearch, productSearch, getChatHistory } = require('../controllers/chatController');
 const auth = require('../middleware/auth');
 
-// POST /api/chat (protected)
-router.post('/', auth, handleChat);
+// POST /api/chat (temporarily public for testing)
+router.post('/', handleChat);
 router.post('/products', productSearch);
 
 // GET /api/chat/:userId (protected) - Get chat history

@@ -13,12 +13,20 @@ exports.handleChat = async (req, res) => {
     return res.status(400).json({ error: 'Message and userId are required.' });
   }
   
-  // STRONGEST possible regex for any image/example request, including complex/combined sentences
-  // Matches: pic, pics, picture, pictures, image, images, visual, visuals, show me, example, examples, look like, can i see, what does it look like, outfit example(s), can you show, anything to show, any to show, any to see, see some, see any, etc.
-  const imageRequestRegex = /(pic|pics|picture|pictures|image|images|visual|visuals|show\s*me|example|examples|look\s*like|can\s*i\s*see|what\s*does\s*it\s*look\s*like|outfit\s*examples?|can\s*you\s*show|anything\s*to\s*show|any\s*to\s*show|any\s*to\s*see|see\s*some|see\s*any)/i;
+  // Very specific regex for actual image/visual requests only
+  // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
+  // But NOT: show me links, show me products, etc.
+  const imageRequestRegex = /(pic|pics|picture|pictures|image|images|visual|visuals|what\s*does\s*it\s*look\s*like|outfit\s*examples?|can\s*i\s*see\s*(it|them)|look\s*like|example\s*of|examples\s*of)/i;
   console.log('DEBUG: Incoming message:', message);
   console.log('DEBUG: imageRequestRegex match:', imageRequestRegex.test(message));
-  if (imageRequestRegex.test(message)) {
+  
+  // Only trigger image response for actual image requests, not product/link requests
+  const isImageRequest = imageRequestRegex.test(message) && 
+    !/(link|product|buy|shop|where|recommend|suggest|shorts|brand|ten thousand|lululemon|nike|adidas|jacket|shirt|jeans|pants|shoes|boots|suit|blazer|coat|sweater|henley|tee|t-shirt|polo|chinos|vest|waistcoat|sneakers|loafers|oxfords|derbies)/i.test(message);
+  
+  console.log('DEBUG: isImageRequest:', isImageRequest);
+  
+  if (isImageRequest) {
     // Save the static message to conversation and return it
     let conversation = await Conversation.findOne({ userId });
     if (!conversation) {
@@ -31,11 +39,15 @@ exports.handleChat = async (req, res) => {
   }
 
   // Only trigger product search when asking about specific clothing/outfits
-  const clothingOutfitRequest = /(what should i wear|outfit for|dress for|what to wear|shoes for|jacket for|shirt for|pants for|jeans for|sneakers for|boots for|suit for|blazer for|tie for|belt for|watch for|accessory for|outfit|clothing|apparel|fashion|dress|wear)/i.test(message);
-  const askingForRecommendations = /(recommend|suggest|what|which|where can i|where to|how to|show me|can you|help me|looking for|need|want|get|buy|find)/i.test(message);
+  const clothingOutfitRequest = /(what should i wear|outfit for|dress for|what to wear|shoes for|jacket for|shirt for|pants for|jeans for|sneakers for|boots for|suit for|blazer for|tie for|belt for|watch for|accessory for|outfit|clothing|apparel|fashion|dress|wear|shorts|brand|ten thousand|lululemon|examples?)/i.test(message);
+  const askingForRecommendations = /(recommend|suggest|what|which|where can i|where to|how to|show me|can you|help me|looking for|need|want|get|buy|find|links|examples?)/i.test(message);
   
   // Only trigger product search when asking about clothing/outfits AND asking for recommendations
   const isProductRequest = clothingOutfitRequest && askingForRecommendations;
+  
+  console.log('DEBUG: clothingOutfitRequest:', clothingOutfitRequest);
+  console.log('DEBUG: askingForRecommendations:', askingForRecommendations);
+  console.log('DEBUG: isProductRequest:', isProductRequest);
   
   // Detect if the user is asking for links to products
   const linkRequestRegex = /(link|where\s*can\s*i\s*(buy|get|find)|show\s*me\s*links|can\s*you\s*give\s*me\s*links|where\s*to\s*buy|check\s*them\s*out|shop\s*for|send\s*me\s*links|give\s*me\s*links|product\s*links|see\s*links|see\s*options|show\s*me\s*where)/i;
@@ -65,6 +77,30 @@ Fake-humanism like "I've got your back," "That was me slipping," "I'm just handi
 Self-references or meta AI talk
 Vibe descriptions — do not narrate how an outfit feels
 Weather forecasts or overexplaining the obvious
+
+ABSOLUTELY FORBIDDEN CLOSERS (NEVER END WITH THESE):
+"Rock it with confidence!"
+"Effortlessly cool!"
+"Time to level up your style!"
+"You're all set!"
+"Hope that helps!"
+"Let me know if you need anything else!"
+"Ready to slay!"
+"Looking sharp!"
+"Killing it!"
+"Own it!"
+"Confidence is key!"
+"Style game strong!"
+"Looking fire!"
+"Ready to turn heads!"
+"Style on point!"
+"Looking fresh!"
+"Ready to impress!"
+"Style goals!"
+"Looking fly!"
+"Ready to dominate!"
+
+NEVER END RESPONSES WITH MOTIVATIONAL CLOSERS. Just stop. Period.
 
 NEVER:
 Overexplain
@@ -115,6 +151,12 @@ Avoid influencer-core trends or loud, try-hard pieces
 Break down the outfit casually — not like a checklist or magazine editor
 Never describe the outfit's "vibe" — just say what looks good, clearly
 
+WHEN USER ASKS FOR NEW PRODUCT CATEGORIES:
+If user asks for a different product type than what you just discussed, ask clarifying questions first
+Examples: "What kind of jacket? Casual, dressy, or something in between?" "For what occasion?" "What's your style preference?"
+Don't assume they want the same brands from the previous conversation
+Focus on the new product category and get context before making recommendations
+
 START OF ANY NEW CONVERSATION:
 Jules gives a quick, personal intro — something like:
 "Hey !  Good to meet you.  Before we get started, tell me about yourself."
@@ -162,6 +204,7 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
       ...recentMessages
     ];
     
+    // Get Jules's response
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages
@@ -186,25 +229,71 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
     
     // If this is a product request and we don't have products yet, search for them
     if (isProductRequest && products.length === 0) {
+      console.log('DEBUG: Product request detected, searching for products...');
       try {
         // Call the product search function directly
         const apiKey = process.env.GOOGLE_API_KEY;
         const cseId = process.env.GOOGLE_CSE_ID;
+        console.log('DEBUG: API Key exists:', !!apiKey);
+        console.log('DEBUG: CSE ID exists:', !!cseId);
+        
+        // Extract brands from Jules's response (we already have the reply from above)
+        
+        // Extract brands from Jules's response
+        const brandRegex = /(lululemon|ten thousand|target|nike|adidas|under armour|uniqlo|h&m|zara|gap|old navy|levi's|calvin klein|tommy hilfiger|ralph lauren|brooks brothers|j\.crew|banana republic|express|hollister|abercrombie)/gi;
+        const mentionedBrands = reply.match(brandRegex);
+        
         let searchQuery = message;
         
-        // Use LLM to generate a better search query
-        try {
-          const llmResult = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item (e.g., 'men's white sneakers Todd Snyder Buck Mason'). Avoid women's fashion and fake sites. Keep it simple and direct." },
-              { role: 'user', content: message }
-            ]
-          });
-          searchQuery = llmResult.choices[0].message.content.trim();
-        } catch (e) {
-          if (!/men|guy|male|gentleman|menswear/i.test(message)) {
-            searchQuery = `men's ${message}`;
+                  // Only use brands from Jules's response if they match the product type being requested
+          if (mentionedBrands && mentionedBrands.length > 0) {
+            const uniqueBrands = [...new Set(mentionedBrands.map(b => b.toLowerCase()))];
+            const requestedProductType = message.match(/(shorts|pants|shirt|jacket|shoes|sneakers|boots|jeans|sweater|hoodie|t-shirt|polo|chinos|vest|blazer|suit|coat)/i);
+            const responseProductType = reply.match(/(shorts|pants|shirt|jacket|shoes|sneakers|boots|jeans|sweater|hoodie|t-shirt|polo|chinos|vest|blazer|suit|coat)/i);
+            
+            // If user is asking for examples, use the product type from Jules's response
+            if (message.toLowerCase().includes('examples')) {
+              if (responseProductType) {
+                const productTypeStr = responseProductType[0];
+                searchQuery = `${uniqueBrands[0]} men's ${productTypeStr} buy shop`;
+                console.log('DEBUG: Using brand from Jules response for examples request:', uniqueBrands[0], 'product type:', productTypeStr);
+              } else {
+                // Fallback: use the brand with a generic search
+                searchQuery = `${uniqueBrands[0]} men's clothing buy shop`;
+                console.log('DEBUG: Using brand from Jules response with generic search:', uniqueBrands[0]);
+              }
+            } else if (requestedProductType && responseProductType && 
+                requestedProductType[0].toLowerCase() === responseProductType[0].toLowerCase()) {
+              // Only use brands if the product types match (user asking for same type Jules mentioned)
+              const productTypeStr = requestedProductType[0];
+              searchQuery = `${uniqueBrands[0]} men's ${productTypeStr} buy shop`;
+              console.log('DEBUG: Using brand from Jules response for matching product type:', uniqueBrands[0]);
+            } else {
+              console.log('DEBUG: Product type mismatch - user asked for:', requestedProductType?.[0], 'but Jules mentioned:', responseProductType?.[0]);
+            }
+          }
+        
+        // If no brands were mentioned in Jules's response, generate a more specific search query
+        if (!mentionedBrands || mentionedBrands.length === 0) {
+          try {
+            const llmResult = await openai.chat.completions.create({
+              model: 'gpt-3.5-turbo',
+              messages: [
+                { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a specific Google search query that will return ONLY the exact product being requested. Be very specific about the item. Examples: 'Ten Thousand men workout shorts buy', 'Lululemon men's running shorts purchase', 'Nike men's gym shorts shop'. Focus on the exact product mentioned, not general categories." },
+                { role: 'user', content: message }
+              ]
+            });
+            searchQuery = llmResult.choices[0].message.content.trim();
+            console.log('DEBUG: Generated search query:', searchQuery);
+          } catch (e) {
+            // Fallback: extract specific product terms and make a targeted search
+            const productTerms = message.match(/(?:ten thousand|lululemon|nike|adidas|under armour|target|amazon|workout|running|gym|training|shorts|pants|shirt|jacket|shoes|sneakers|boots)/gi);
+            if (productTerms && productTerms.length > 0) {
+              searchQuery = `men's ${productTerms.join(' ')} buy shop`;
+            } else {
+              searchQuery = `men's ${message} buy shop`;
+            }
+            console.log('DEBUG: Fallback search query:', searchQuery);
           }
         }
         
@@ -219,8 +308,13 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
         });
         
         const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+        const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|wikipedia|quora|stackoverflow/i;
+        const shoppingSites = /amazon|target|walmart|bestbuy|macys|nordstrom|bloomingdales|saks|neiman|barneys|shop|store|buy|purchase|retail/i;
+        
         const searchProducts = (response.data.items || [])
           .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+          .filter(item => !nonProductSites.test(item.link))
+          .filter(item => shoppingSites.test(item.link) || shoppingSites.test(item.title + ' ' + (item.snippet || '')))
           .slice(0, 3)
           .map((item, index) => ({
             title: item.title || `Option ${index + 1}`,
@@ -231,7 +325,10 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
           }));
         
         if (searchProducts.length > 0) {
+          console.log('DEBUG: Found products:', searchProducts.length);
           products = searchProducts;
+        } else {
+          console.log('DEBUG: No products found in search results');
         }
       } catch (productError) {
         console.error('Product search error in chat:', productError);
@@ -241,6 +338,7 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
     
     // If user is asking for links, try to extract product/brand names from last assistant message
     if (isLinkRequest) {
+      console.log('DEBUG: Link request detected, extracting products from conversation...');
       // Find the last assistant message
       const lastAssistantMsg = [...conversation.messages].reverse().find(m => m.role === 'assistant');
       let searchQuery = '';
@@ -269,8 +367,10 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
             },
           });
           const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+          const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review/i;
           const searchProducts = (response.data.items || [])
             .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+            .filter(item => !nonProductSites.test(item.link))
             .slice(0, 3)
             .map((item, index) => ({
               title: item.title || `Option ${index + 1}`,
@@ -330,15 +430,21 @@ exports.productSearch = async (req, res) => {
     const llmResult = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
-        { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item (e.g., 'men's white sneakers Todd Snyder Buck Mason'). Avoid women's fashion and fake sites. Include price and a short, punchy description if possible." },
+        { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a specific Google search query that will return ONLY the exact product being requested. Be very specific about the item. Examples: 'Ten Thousand men workout shorts buy', 'Lululemon men's running shorts purchase', 'Nike men's gym shorts shop'. Focus on the exact product mentioned, not general categories." },
         { role: 'user', content: query }
       ]
     });
     searchQuery = llmResult.choices[0].message.content.trim();
+    console.log('DEBUG: ProductSearch generated query:', searchQuery);
   } catch (e) {
-    if (!/men|guy|male|gentleman|menswear/i.test(query)) {
-      searchQuery = `men's ${query}`;
+    // Fallback: extract specific product terms and make a targeted search
+    const productTerms = query.match(/(?:ten thousand|lululemon|nike|adidas|under armour|target|amazon|workout|running|gym|training|shorts|pants|shirt|jacket|shoes|sneakers|boots)/gi);
+    if (productTerms && productTerms.length > 0) {
+      searchQuery = `men's ${productTerms.join(' ')} buy shop`;
+    } else {
+      searchQuery = `men's ${query} buy shop`;
     }
+    console.log('DEBUG: ProductSearch fallback query:', searchQuery);
   }
   try {
     const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
@@ -351,9 +457,14 @@ exports.productSearch = async (req, res) => {
       },
     });
     const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+    const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|wikipedia|quora|stackoverflow/i;
+    const shoppingSites = /amazon|target|walmart|bestbuy|macys|nordstrom|bloomingdales|saks|neiman|barneys|shop|store|buy|purchase|retail/i;
+    
     // Try to extract product info (name, image, price, description, link)
     const products = (response.data.items || [])
       .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+      .filter(item => !nonProductSites.test(item.link))
+      .filter(item => shoppingSites.test(item.link) || shoppingSites.test(item.title + ' ' + (item.snippet || '')))
       .slice(0, 4)
       .map(item => ({
         title: item.title,

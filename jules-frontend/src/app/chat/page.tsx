@@ -68,7 +68,6 @@ export default function Chat() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [productLinks, setProductLinks] = useState<{title: string, link: string, image?: string, price?: string, description?: string}[]>([]);
   const [lastScenario, setLastScenario] = useState<string>("");
 
   const scrollToBottom = () => {
@@ -126,31 +125,9 @@ export default function Chat() {
     setInputText("");
     setIsLoading(true);
 
-    const userId = getUserIdFromToken();
-    if (!userId) {
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 2).toString(),
-        text: "You must be logged in to chat.",
-        sender: "jules",
-        timestamp: new Date(),
-      }]);
-      setIsLoading(false);
-      return;
-    }
+    const userId = getUserIdFromToken() || 'test123'; // Use test user if no token
 
     try {
-      // Product search
-      if (/where can i get|where do i buy|where to buy|link to buy|shop|find.*(jacket|shirt|jeans|pants|shoes|boots|suit|blazer|coat|sweater|henley|tee|t-shirt|polo|chinos|vest|waistcoat|sneakers|loafers|oxfords|derbies)/i.test(messageText)) {
-        const prodData = await chat.getProducts(messageText);
-        setProductLinks(prodData.products || []);
-        setMessages((prev) => [...prev, {
-          id: (Date.now() + 4).toString(),
-          text: "Here are some solid picks:",
-          sender: "jules",
-          timestamp: new Date(),
-        }]);
-        return;
-      }
       // If user asks for examples, fetch images
       if (/show me examples|show me|visual examples|can i see|more|again|another/i.test(messageText)) {
         let scenario = lastScenario;
@@ -188,7 +165,6 @@ export default function Chat() {
         setMessages((prev) => [...prev, ...newMessages]);
       } else {
         setLastScenario(messageText);
-        setProductLinks([]);
         const data = await chat.sendMessage(messageText, userId);
         const julesTextMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -355,27 +331,6 @@ export default function Chat() {
               </div>
             </div>
           ))}
-          {/* Show product links if available */}
-          {productLinks.length > 0 && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {productLinks.map((prod, idx) => (
-                <div key={idx} className="bg-white rounded-xl shadow p-3 flex flex-col items-center border border-gray-200">
-                  {safeString(prod.image) ? (
-                    <img src={safeString(prod.image)} alt={safeString(prod.title) || 'Product image'} className="w-32 h-32 object-contain mb-2 rounded" />
-                  ) : (
-                    <div className="w-32 h-32 flex items-center justify-center bg-gray-100 text-gray-400 mb-2 rounded">No Image</div>
-                  )}
-                  <div className="font-semibold text-gray-900 text-center mb-1 line-clamp-2">{prod.title ?? ''}</div>
-                  {prod.price && (
-                    <div className="text-gray-700 text-sm mb-1">{prod.price ?? ''}</div>
-                  )}
-                  {prod.link && (
-                    <a href={prod.link ?? ''} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline">View Product</a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
           {/* Jules is typing indicator */}
           {isLoading && (
             <div className="flex items-end gap-2 justify-start flex-row">
