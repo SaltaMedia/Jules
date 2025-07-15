@@ -5,6 +5,114 @@ const axios = require('axios');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// List of forbidden closer patterns (case-insensitive, partials, and regex)
+const forbiddenCloserPatterns = [
+  /good luck/i,
+  /hope that helps/i,
+  /let me know if you need anything else/i,
+  /you got this/i,
+  /you'll do just fine/i,
+  /wishing you the best/i,
+  /stay (charming|genuine|confident|awesome)/i,
+  /remember(,|:)?/i,
+  /keep (it up|being yourself|rocking it|it smooth|it genuine)/i,
+  /ready to (slay|impress|dominate|turn heads)/i,
+  /style (game strong|on point|goals|looking (sharp|fire|fresh|fly))/i,
+  /own it/i,
+  /confidence is key/i,
+  /killing it/i,
+  /effortlessly cool/i,
+  /rock it with confidence/i,
+  /time to level up your style/i,
+  /you're all set/i,
+  /looking sharp/i,
+  /looking fire/i,
+  /looking fresh/i,
+  /looking fly/i,
+  /ready to impress/i,
+  /ready to dominate/i,
+  /style goals/i,
+  /let's compare notes/i,
+  /just be yourself/i,
+  /be authentic/i,
+  /be playful/i,
+  /be mysterious/i,
+  /keep it real/i,
+  /keep it intriguing/i,
+  /keep it smooth/i,
+  /keep it genuine/i,
+  /keep it up/i,
+  /keep going/i,
+  /keep the conversation going/i,
+  /swap stories/i,
+  /let's swap stories/i,
+  /let's see where the night takes us/i,
+  /stand out from the crowd/i,
+  /you're interested in her/i,
+  /tailored approach/i,
+  /sets the stage/i,
+  /surely stand out/i,
+  /mission to find/i,
+  /treat yourself/i,
+  /up your (workout|style) game/i,
+  /fun and personalized conversation/i,
+  /conversation going/i,
+  /conversation open/i,
+  /conversation naturally/i,
+  /conversation flowing/i,
+  /conversation starter/i,
+  /conversation partner/i,
+  /conversation with/i,
+  /conversation about/i,
+  /conversation to/i,
+  /conversation for/i,
+  /conversation in/i,
+  /conversation is/i,
+  /conversation on/i,
+  /conversation that/i,
+  /conversation this/i,
+  /conversation will/i,
+  /conversation you/i,
+  /conversation your/i,
+  /conversation's/i,
+  /conversation’s/i
+];
+
+function stripForbiddenClosersAndReplaceWithPrompt(text) {
+  if (!text) return text;
+  // Split into sentences
+  let sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  // Remove trailing whitespace
+  sentences = sentences.map(s => s.trim());
+  // Remove any trailing closer sentences
+  while (sentences.length > 0) {
+    const last = sentences[sentences.length - 1];
+    if (forbiddenCloserPatterns.some(pattern => pattern.test(last))) {
+      sentences.pop();
+    } else {
+      break;
+    }
+  }
+  // If all sentences were removed, fallback to original text
+  if (sentences.length === 0) return "What else would you like to talk about?";
+  // If the last sentence is generic or not open-ended, add a conversational prompt
+  const last = sentences[sentences.length - 1];
+  const openEndedPrompts = [
+    "What do you think?",
+    "Anything else on your mind?",
+    "What are your thoughts?",
+    "Is there anything else you'd like to ask?",
+    "Want to dive deeper into this?",
+    "How does that sound to you?",
+    "Anything else you want to share?"
+  ];
+  // If the last sentence is not a question and not open-ended, add a prompt
+  if (!/[?]$/.test(last) && !/let's|let us|would you like|do you want|can I|shall we|how about|what about|is there anything else|anything else/i.test(last)) {
+    sentences.push(openEndedPrompts[Math.floor(Math.random() * openEndedPrompts.length)]);
+  }
+  return sentences.join(' ');
+}
+
 // Handle chat requests
 exports.handleChat = async (req, res) => {
   const { message, userId } = req.body;
@@ -213,7 +321,7 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];
-    let cleanedReply = reply;
+    let cleanedReply = stripForbiddenClosersAndReplaceWithPrompt(reply);
     const productLinkRegex = /!\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
     let match;
     while ((match = productLinkRegex.exec(reply)) !== null) {
