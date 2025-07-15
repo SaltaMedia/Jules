@@ -28,10 +28,11 @@ app.use(session({ secret: 'jules_secret', resave: false, saveUninitialized: fals
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Google OAuth routes
-app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+// Google OAuth routes (only if configured)
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-app.get('/api/auth/google/callback', (req, res, next) => {
+  app.get('/api/auth/google/callback', (req, res, next) => {
   passport.authenticate('google', (err, user, info) => {
     if (err) {
       console.error('GOOGLE OAUTH ERROR:', err, info);
@@ -44,11 +45,26 @@ app.get('/api/auth/google/callback', (req, res, next) => {
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
     const token = jwt.sign({ userId: user._id, email: user.email, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: '7d' });
-    res.redirect(`http://localhost:3000/auth/callback?token=${token}`);
+    const redirectUrl = process.env.NODE_ENV === 'production' 
+      ? `https://www.juleslabs.com/auth/callback?token=${token}`
+      : `http://localhost:3000/auth/callback?token=${token}`;
+    res.redirect(redirectUrl);
   })(req, res, next);
-});
+  });
+}
 
 app.get('/test', (req, res) => res.send('Express is working!'));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 const PORT = process.env.PORT || 4000;
 
