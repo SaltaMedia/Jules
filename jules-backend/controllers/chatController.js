@@ -30,9 +30,12 @@ exports.handleChat = async (req, res) => {
     return res.json({ reply: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance.", products: [] });
   }
 
-  // Check if this is a product request
-  const productRequestRegex = /(buy|purchase|get|find|recommend|suggest|option|where|what's a good|good option|looking for|need|want|shirt|pants|jeans|sneakers|shoes|boots|jacket|coat|sweater|hoodie|tee|t-shirt|polo|button|suit|blazer|tie|belt|watch|accessory|outfit|style)/i;
-  const isProductRequest = productRequestRegex.test(message);
+  // Only trigger product search when asking about specific clothing/outfits
+  const clothingOutfitRequest = /(what should i wear|outfit for|dress for|what to wear|shoes for|jacket for|shirt for|pants for|jeans for|sneakers for|boots for|suit for|blazer for|tie for|belt for|watch for|accessory for|outfit|clothing|apparel|fashion|dress|wear)/i.test(message);
+  const askingForRecommendations = /(recommend|suggest|what|which|where can i|where to|how to|show me|can you|help me|looking for|need|want|get|buy|find)/i.test(message);
+  
+  // Only trigger product search when asking about clothing/outfits AND asking for recommendations
+  const isProductRequest = clothingOutfitRequest && askingForRecommendations;
   
   // Detect if the user is asking for links to products
   const linkRequestRegex = /(link|where\s*can\s*i\s*(buy|get|find)|show\s*me\s*links|can\s*you\s*give\s*me\s*links|where\s*to\s*buy|check\s*them\s*out|shop\s*for|send\s*me\s*links|give\s*me\s*links|product\s*links|see\s*links|see\s*options|show\s*me\s*where)/i;
