@@ -81,7 +81,25 @@ function stripClosers(text) {
     /(?:Let\'?s.*?work.*?)([.!?])?$/i,
     /(?:Let\'?s.*?plan.*?)([.!?])?$/i,
     /(?:Let\'?s.*?start.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?begin.*?)([.!?])?$/i
+    /(?:Let\'?s.*?begin.*?)([.!?])?$/i,
+    /(?:Is there anything else.*?)([.!?])?$/i,
+    /(?:Anything else.*?)([.!?])?$/i,
+    /(?:What else.*?)([.!?])?$/i,
+    /(?:Need anything else.*?)([.!?])?$/i,
+    /(?:Want anything else.*?)([.!?])?$/i,
+    /(?:Can I help with anything else.*?)([.!?])?$/i,
+    /(?:Any other questions.*?)([.!?])?$/i,
+    /(?:Other questions.*?)([.!?])?$/i,
+    /(?:More questions.*?)([.!?])?$/i,
+    /(?:Any more questions.*?)([.!?])?$/i,
+    /(?:Got any other questions.*?)([.!?])?$/i,
+    /(?:Have any other questions.*?)([.!?])?$/i,
+    /(?:Any other style questions.*?)([.!?])?$/i,
+    /(?:Other style questions.*?)([.!?])?$/i,
+    /(?:More style questions.*?)([.!?])?$/i,
+    /(?:Any more style questions.*?)([.!?])?$/i,
+    /(?:Got any other style questions.*?)([.!?])?$/i,
+    /(?:Have any other style questions.*?)([.!?])?$/i
   ];
   let result = text;
   closerPatterns.forEach(pattern => {
