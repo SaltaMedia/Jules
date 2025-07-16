@@ -314,9 +314,14 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages,
-      // Removed max_tokens to allow unlimited response length
+      max_tokens: 4000, // Set to very high number to ensure complete responses
+      temperature: 0.7
     });
     const reply = completion.choices[0].message.content;
+    
+    // Debug: Log response length to see if it's being truncated
+    console.log('DEBUG: Response length:', reply.length);
+    console.log('DEBUG: Response preview:', reply.substring(0, 200) + '...');
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];
