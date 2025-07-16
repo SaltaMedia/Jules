@@ -101,7 +101,31 @@ const forbiddenCloserPatterns = [
   /show them what you\'?ve got/i,
   /let\'?s (do this|go|get it|make it happen)/i,
   /step up your (game|style|confidence)/i,
-  /now, /i
+  /now, /i,
+  // More specific patterns for the exact closers Jules is using
+  /go work that room/i,
+  /hit me up/i,
+  /it\'?s time to shine/i,
+  /work that room/i,
+  /need more tips/i,
+  /want to chat about/i,
+  /specific scenarios/i,
+  /amp up your game/i,
+  /ready to amp/i,
+  /hot stuff/i,
+  /killer smile/i,
+  /own the moment/i,
+  /star you are/i,
+  /icebreaker brilliance/i,
+  /smooth icebreaker/i,
+  /sly compliment/i,
+  /sparkling conversation/i,
+  /captivating stories/i,
+  /flirt alert/i,
+  /spice things up/i,
+  /magnetic vibe/i,
+  /respect signals/i,
+  /superpower/i
 ];
 
 function stripForbiddenClosersAndReplaceWithPrompt(text) {
@@ -110,30 +134,18 @@ function stripForbiddenClosersAndReplaceWithPrompt(text) {
   let sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
   // Remove trailing whitespace
   sentences = sentences.map(s => s.trim());
-  // Aggressively remove any trailing closer sentences (multi-sentence blocks)
-  while (sentences.length > 0) {
-    const last = sentences[sentences.length - 1];
-    if (forbiddenCloserPatterns.some(pattern => pattern.test(last))) {
-      sentences.pop();
-      continue;
+  
+  // More aggressive approach: check each sentence from the end and remove any that contain forbidden patterns
+  let i = sentences.length - 1;
+  while (i >= 0) {
+    const sentence = sentences[i];
+    // Check if this sentence contains any forbidden pattern
+    if (forbiddenCloserPatterns.some(pattern => pattern.test(sentence))) {
+      sentences.splice(i, 1);
     }
-    // Also check if the last 2-3 sentences together form a closer block
-    if (sentences.length >= 2) {
-      const last2 = sentences.slice(-2).join(' ');
-      if (forbiddenCloserPatterns.some(pattern => pattern.test(last2))) {
-        sentences = sentences.slice(0, -2);
-        continue;
-      }
-    }
-    if (sentences.length >= 3) {
-      const last3 = sentences.slice(-3).join(' ');
-      if (forbiddenCloserPatterns.some(pattern => pattern.test(last3))) {
-        sentences = sentences.slice(0, -3);
-        continue;
-      }
-    }
-    break;
+    i--;
   }
+  
   // If all sentences were removed, fallback to original text
   if (sentences.length === 0) return "What else would you like to talk about?";
   return sentences.join(' ');
