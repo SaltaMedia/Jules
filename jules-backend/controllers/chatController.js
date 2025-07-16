@@ -92,7 +92,16 @@ const forbiddenCloserPatterns = [
   /any (thoughts|questions|concerns)/i,
   /got any (questions|thoughts)/i,
   /have any (questions|thoughts)/i,
-  /need any (help|guidance|clarification)/i
+  /need any (help|guidance|clarification)/i,
+  // Hype/cheerleading closers
+  /bring it on/i,
+  /time to make (those|these) (bar )?encounters memorable/i,
+  /you\'?ve got this/i,
+  /go rock( the)? (bar scene|it|your look|your style|your outfit)?/i,
+  /show them what you\'?ve got/i,
+  /let\'?s (do this|go|get it|make it happen)/i,
+  /step up your (game|style|confidence)/i,
+  /now, /i
 ];
 
 function stripForbiddenClosersAndReplaceWithPrompt(text) {
@@ -101,18 +110,32 @@ function stripForbiddenClosersAndReplaceWithPrompt(text) {
   let sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
   // Remove trailing whitespace
   sentences = sentences.map(s => s.trim());
-  // Remove any trailing closer sentences
+  // Aggressively remove any trailing closer sentences (multi-sentence blocks)
   while (sentences.length > 0) {
     const last = sentences[sentences.length - 1];
     if (forbiddenCloserPatterns.some(pattern => pattern.test(last))) {
       sentences.pop();
-    } else {
-      break;
+      continue;
     }
+    // Also check if the last 2-3 sentences together form a closer block
+    if (sentences.length >= 2) {
+      const last2 = sentences.slice(-2).join(' ');
+      if (forbiddenCloserPatterns.some(pattern => pattern.test(last2))) {
+        sentences = sentences.slice(0, -2);
+        continue;
+      }
+    }
+    if (sentences.length >= 3) {
+      const last3 = sentences.slice(-3).join(' ');
+      if (forbiddenCloserPatterns.some(pattern => pattern.test(last3))) {
+        sentences = sentences.slice(0, -3);
+        continue;
+      }
+    }
+    break;
   }
   // If all sentences were removed, fallback to original text
   if (sentences.length === 0) return "What else would you like to talk about?";
-  // Do NOT add a prompt or question at the end. Just return the stripped text.
   return sentences.join(' ');
 }
 
