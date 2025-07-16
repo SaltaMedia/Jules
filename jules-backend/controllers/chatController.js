@@ -147,10 +147,10 @@ exports.handleChat = async (req, res) => {
   }
 
   // Only trigger product search when asking about specific clothing/outfits
-  const clothingOutfitRequest = /(what should i wear|outfit for|dress for|what to wear|shoes for|jacket for|shirt for|pants for|jeans for|sneakers for|boots for|suit for|blazer for|tie for|belt for|watch for|accessory for|outfit|clothing|apparel|fashion|dress|wear|shorts|brand|ten thousand|lululemon|examples?)/i.test(message);
-  const askingForRecommendations = /(recommend|suggest|what|which|where can i|where to|how to|show me|can you|help me|looking for|need|want|get|buy|find|links|examples?)/i.test(message);
-  
-  // Only trigger product search when asking about clothing/outfits AND asking for recommendations
+  const productTypeRegex = /(shorts|pants|shirt|jacket|shoes|sneakers|boots|jeans|sweater|hoodie|t-shirt|polo|chinos|vest|blazer|suit|coat|henley|tee|waistcoat|loafers|oxfords|derbies)/i;
+  const clothingOutfitRequest = productTypeRegex.test(message);
+  const askingForRecommendations = /(recommend|suggest|which|where can i|where to|how to|show me|can you|help me|looking for|need|want|get|buy|find|links|examples?)/i.test(message);
+  // Only trigger product search when asking about a specific product type AND asking for recommendations
   const isProductRequest = clothingOutfitRequest && askingForRecommendations;
   
   console.log('DEBUG: clothingOutfitRequest:', clothingOutfitRequest);
