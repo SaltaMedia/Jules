@@ -198,13 +198,14 @@ exports.handleChat = async (req, res) => {
   // Very specific regex for actual image/visual requests only
   // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
   // But NOT: show me links, show me products, etc.
-  const imageRequestRegex = /(pic|pics|picture|pictures|image|images|visual|visuals|what\s*does\s*it\s*look\s*like|outfit\s*examples?|can\s*i\s*see\s*(it|them)|look\s*like|example\s*of|examples\s*of)/i;
+  const imageRequestRegex = /(pic|pics|picture|pictures|image|images|visual|visuals|what\s*does\s*it\s*look\s*like|outfit\s*examples?|can\s*i\s*see\s*(it|them)|example\s*of|examples\s*of)/i;
   console.log('DEBUG: Incoming message:', message);
   console.log('DEBUG: imageRequestRegex match:', imageRequestRegex.test(message));
   
   // Only trigger image response for actual image requests, not product/link requests
+  // Also exclude common non-image phrases that might contain "like"
   const isImageRequest = imageRequestRegex.test(message) && 
-    !/(link|product|buy|shop|where|recommend|suggest|shorts|brand|ten thousand|lululemon|nike|adidas|jacket|shirt|jeans|pants|shoes|boots|suit|blazer|coat|sweater|henley|tee|t-shirt|polo|chinos|vest|waistcoat|sneakers|loafers|oxfords|derbies)/i.test(message);
+    !/(link|product|buy|shop|where|recommend|suggest|shorts|brand|ten thousand|lululemon|nike|adidas|jacket|shirt|jeans|pants|shoes|boots|suit|blazer|coat|sweater|henley|tee|t-shirt|polo|chinos|vest|waistcoat|sneakers|loafers|oxfords|derbies|pick\s*up\s*line|pickup\s*line|line|conversation|chat|talk|dating|date|girl|woman|women|flirt|flirting)/i.test(message);
   
   console.log('DEBUG: isImageRequest:', isImageRequest);
   
