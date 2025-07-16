@@ -5,6 +5,93 @@ const axios = require('axios');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Aggressively strip canned closers, hype, and content-writer endings
+function stripClosers(text) {
+  if (!text) return text;
+  // Remove common closers and hype phrases
+  const closerPatterns = [
+    /(?:Let me know if.*?)([.!?])?$/i,
+    /(?:Hope (that|this) helps.*?)([.!?])?$/i,
+    /(?:You\'?re all set.*?)([.!?])?$/i,
+    /(?:Keep bringing the style questions.*?)([.!?])?$/i,
+    /(?:I\'?ll keep dishing out the style solutions.*?)([.!?])?$/i,
+    /(?:Rock it with confidence.*?)([.!?])?$/i,
+    /(?:effortlessly cool.*?)([.!?])?$/i,
+    /(?:level up your style game.*?)([.!?])?$/i,
+    /(?:my friend[.!?])$/i,
+    /(?:Just say the word.*?)([.!?])?$/i,
+    /(?:I\'?ve got you covered.*?)([.!?])?$/i,
+    /(?:Keep bringing.*?questions.*?I\'?ll.*?solutions.*?)([.!?])?$/i,
+    /(?:Let\'?s do this.*?)([.!?])?$/i,
+    /(?:Treat yourself to a pair.*?)([.!?])?$/i,
+    /(?:up your workout game.*?)([.!?])?$/i,
+    /(?:Keep.*?coming.*?I\'?ll.*?keep.*?dishing.*?out.*?solutions.*?)([.!?])?$/i,
+    /(?:If you need more.*?Just ask.*?)([.!?])?$/i,
+    /(?:I\'?m always here.*?)([.!?])?$/i,
+    /(?:Let\'?s keep.*?going.*?)([.!?])?$/i,
+    /(?:You got this.*?)([.!?])?$/i,
+    /(?:Showtime baby.*?)([.!?])?$/i,
+    /(?:charisma is irresistible.*?)([.!?])?$/i,
+    /(?:I\'?m just a message away.*?)([.!?])?$/i,
+    /(?:I\'?m here whenever you need.*?)([.!?])?$/i,
+    /(?:Let\'?s keep the style rolling.*?)([.!?])?$/i,
+    /(?:I\'?m always ready to help.*?)([.!?])?$/i,
+    /(?:Ready to help you.*?)([.!?])?$/i,
+    /(?:Just say the word.*?)([.!?])?$/i,
+    /(?:I\'?m here to help.*?)([.!?])?$/i,
+    /(?:Let\'?s keep.*?going.*?)([.!?])?$/i,
+    /(?:Let\'?s dial up your cool factor.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?get started.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?level up.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?shop.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?argue.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?fix.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?move.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?win.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?keep.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?roll.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?rock.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?go.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?do.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?see.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?find.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?make.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?try.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?talk.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?chat.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?work.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?plan.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?start.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?begin.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?move.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?fix.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?argue.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?win.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?keep.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?roll.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?rock.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?go.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?do.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?see.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?find.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?make.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?try.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?talk.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?chat.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?work.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?plan.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?start.*?)([.!?])?$/i,
+    /(?:Let\'?s.*?begin.*?)([.!?])?$/i
+  ];
+  let result = text;
+  closerPatterns.forEach(pattern => {
+    result = result.replace(pattern, '').trim();
+  });
+  // Remove trailing hype/closer sentences (e.g., "You're all set!", "Hope that helps!", etc.)
+  result = result.replace(/([.!?])\s+([A-Z][^.!?]{0,40}(all set|let me know|hope this helps|keep bringing|keep dishing|rock it|effortlessly cool|level up|my friend|just say the word|got you covered|keep bringing|keep dishing|let's do this|treat yourself|up your workout game|showtime baby|charisma is irresistible|just a message away|here whenever you need|keep the style rolling|always ready to help|ready to help you|just say the word|here to help|let's keep going|let's dial up your cool factor|let's get started|let's level up|let's shop|let's argue|let's fix|let's move|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin|let's move|let's fix|let's argue|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin)[^.!?]{0,40}[.!?])/gi, '$1');
+  return result;
+}
+
 // Handle chat requests
 exports.handleChat = async (req, res) => {
   const { message, userId } = req.body;
@@ -198,7 +285,7 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];
-    let cleanedReply = reply;
+    let cleanedReply = stripClosers(reply);
     const productLinkRegex = /!\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
     let match;
     while ((match = productLinkRegex.exec(reply)) !== null) {
