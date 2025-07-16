@@ -5,225 +5,6 @@ const axios = require('axios');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// List of forbidden closer patterns (case-insensitive, partials, and regex)
-const forbiddenCloserPatterns = [
-  /good luck/i,
-  /hope that helps/i,
-  /let me know if you need anything else/i,
-  /you got this/i,
-  /you'll do just fine/i,
-  /wishing you the best/i,
-  /stay (charming|genuine|confident|awesome)/i,
-  /remember(,|:)?/i,
-  /keep (it up|being yourself|rocking it|it smooth|it genuine)/i,
-  /ready to (slay|impress|dominate|turn heads)/i,
-  /style (game strong|on point|goals|looking (sharp|fire|fresh|fly))/i,
-  /own it/i,
-  /confidence is key/i,
-  /killing it/i,
-  /effortlessly cool/i,
-  /rock it with confidence/i,
-  /time to level up your style/i,
-  /you're all set/i,
-  /looking sharp/i,
-  /looking fire/i,
-  /looking fresh/i,
-  /looking fly/i,
-  /ready to impress/i,
-  /ready to dominate/i,
-  /style goals/i,
-  /let's compare notes/i,
-  /just be yourself/i,
-  /be authentic/i,
-  /be playful/i,
-  /be mysterious/i,
-  /keep it real/i,
-  /keep it intriguing/i,
-  /keep it smooth/i,
-  /keep it genuine/i,
-  /keep it up/i,
-  /keep going/i,
-  /keep the conversation going/i,
-  /swap stories/i,
-  /let's swap stories/i,
-  /let's see where the night takes us/i,
-  /stand out from the crowd/i,
-  /you're interested in her/i,
-  /tailored approach/i,
-  /sets the stage/i,
-  /surely stand out/i,
-  /mission to find/i,
-  /treat yourself/i,
-  /up your (workout|style) game/i,
-  /fun and personalized conversation/i,
-  /conversation going/i,
-  /conversation open/i,
-  /conversation naturally/i,
-  /conversation flowing/i,
-  /conversation starter/i,
-  /conversation partner/i,
-  /conversation with/i,
-  /conversation about/i,
-  /conversation to/i,
-  /conversation for/i,
-  /conversation in/i,
-  /conversation is/i,
-  /conversation on/i,
-  /conversation that/i,
-  /conversation this/i,
-  /conversation will/i,
-  /conversation you/i,
-  /conversation your/i,
-  /conversation's/i,
-  /conversation’s/i,
-  // Question-based closers that force conversation
-  /ready to (hit|step|level|take|go)/i,
-  /how do you feel about/i,
-  /what do you think/i,
-  /what are your thoughts/i,
-  /how does that sound/i,
-  /does that make sense/i,
-  /does that help/i,
-  /want to (dive|explore|discuss|talk)/i,
-  /shall we (continue|explore|discuss)/i,
-  /can I (help|assist|guide)/i,
-  /would you like (more|to|help)/i,
-  /do you want (to|more|help)/i,
-  /any (thoughts|questions|concerns)/i,
-  /got any (questions|thoughts)/i,
-  /have any (questions|thoughts)/i,
-  /need any (help|guidance|clarification)/i,
-  // Hype/cheerleading closers
-  /bring it on/i,
-  /time to make (those|these) (bar )?encounters memorable/i,
-  /you\'?ve got this/i,
-  /go rock( the)? (bar scene|it|your look|your style|your outfit)?/i,
-  /show them what you\'?ve got/i,
-  /let\'?s (do this|go|get it|make it happen)/i,
-  /step up your (game|style|confidence)/i,
-  /now, /i,
-  // More specific patterns for the exact closers Jules is using
-  /go work that room/i,
-  /hit me up/i,
-  /it\'?s time to shine/i,
-  /work that room/i,
-  /need more tips/i,
-  /want to chat about/i,
-  /specific scenarios/i,
-  /amp up your game/i,
-  /ready to amp/i,
-  /hot stuff/i,
-  /killer smile/i,
-  /own the moment/i,
-  /star you are/i,
-  /icebreaker brilliance/i,
-  /smooth icebreaker/i,
-  /sly compliment/i,
-  /sparkling conversation/i,
-  /captivating stories/i,
-  /flirt alert/i,
-  /spice things up/i,
-  /magnetic vibe/i,
-  /respect signals/i,
-  /superpower/i,
-  // Exact phrases Jules is using that are slipping through
-  /you\\'?ve got the charm/i,
-  /now go work your magic/i,
-  /go work your magic/i,
-  /work your magic/i,
-  /fire away/i,
-  /have a specific scenario in mind/i,
-  /specific scenario in mind/i,
-  /scenario in mind/i,
-  /need more tips or have/i,
-  /more tips or have/i,
-  /tips or have/i,
-  /or have a specific/i,
-  /have a specific/i,
-  /a specific scenario/i,
-  // Cringy/over-the-top closers
-  /your charisma is irresistible/i,
-  /charisma is irresistible/i,
-  /irresistible, after all/i,
-  /after all/i,
-  /it\\'?s showtime/i,
-  /showtime, baby/i,
-  /showtime baby/i,
-  /let me know/i,
-  /let me know!/i,
-  /let me know\?/i,
-  /suave/i,
-  /magic at the bar/i,
-  /work your magic/i,
-  /your magic/i,
-  /own the night/i,
-  /own the space/i,
-  /genius/i,
-  /like a pro/i,
-  /pro/i,
-  /stage left/i,
-  /exit stage left/i,
-  /gracefully exit/i,
-  /irresistible/i,
-  /charisma/i,
-  /baby/i,
-  /showtime/i,
-  // More specific patterns for the exact closers Jules is using
-  /time to work that bar like a pro/i,
-  /work that bar like a pro/i,
-  /like a pro!/i,
-  /let\\'?s chat!/i,
-  /let\\'?s chat/i,
-  /get out there and turn heads/i,
-  /turn heads/i,
-  /out there and turn heads/i,
-  /hey stud/i,
-  /hey, stud/i,
-  /stud/i,
-  /playbook/i,
-  /your playbook/i,
-  /here\\'?s your playbook/i,
-  /best accessory/i,
-  /confidence is your best accessory/i,
-  /two-way street/i,
-  /make it a two-way street/i,
-  /speaks volumes/i,
-  /your charm speaks volumes/i,
-  /charm speaks volumes/i
-];
-
-function stripForbiddenClosersAndReplaceWithPrompt(text) {
-  if (!text) return text;
-  // Split into sentences
-  let sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-  // Remove trailing whitespace
-  sentences = sentences.map(s => s.trim());
-  
-  // SUPER aggressive approach: check each sentence from the end and remove any that look like closers
-  let i = sentences.length - 1;
-  while (i >= 0) {
-    const sentence = sentences[i];
-    
-    // Check for exact forbidden patterns
-    const hasForbiddenPattern = forbiddenCloserPatterns.some(pattern => pattern.test(sentence));
-    
-    // Check for broader closer indicators
-    const hasCloserIndicators = 
-      /(you\\'?ve got|you have|you\\'?re ready|ready to|time to|go |now |need |want |have |got |fire away|bring it|let\\'?s |shall we|can i|would you|do you|any |got any|have any|need any|reach out|get back|hit me|shoot me|drop me|keep me|feel free|don\\'?t hesitate|if you need|anything else|other questions|other concerns|more tips|more help|more guidance|specific scenario|scenario in mind|in mind|mind\?|tips or|or have|have a|a specific|specific scenario)/i.test(sentence) ||
-      /(magic|charm|shine|rock|work|level up|step up|amp up|turn heads|impress|dominate|slay|kill|own|confidence|style|game|fire|fresh|fly|sharp|goals|on point|strong)/i.test(sentence) ||
-      sentence.includes('?') && /(need|want|have|got|tips|help|guidance|scenario|mind|else|other|more)/i.test(sentence);
-    
-    if (hasForbiddenPattern || hasCloserIndicators) {
-      sentences.splice(i, 1);
-    }
-    i--;
-  }
-  
-  // If all sentences were removed, fallback to original text
-  if (sentences.length === 0) return "What else would you like to talk about?";
-  return sentences.join(' ');
-}
-
 // Handle chat requests
 exports.handleChat = async (req, res) => {
   const { message, userId } = req.body;
@@ -258,10 +39,10 @@ exports.handleChat = async (req, res) => {
   }
 
   // Only trigger product search when asking about specific clothing/outfits
-  const productTypeRegex = /(shorts|pants|shirt|jacket|shoes|sneakers|boots|jeans|sweater|hoodie|t-shirt|polo|chinos|vest|blazer|suit|coat|henley|tee|waistcoat|loafers|oxfords|derbies)/i;
-  const clothingOutfitRequest = productTypeRegex.test(message);
-  const askingForRecommendations = /(recommend|suggest|which|where can i|where to|how to|show me|can you|help me|looking for|need|want|get|buy|find|links|examples?)/i.test(message);
-  // Only trigger product search when asking about a specific product type AND asking for recommendations
+  const clothingOutfitRequest = /(what should i wear|outfit for|dress for|what to wear|shoes for|jacket for|shirt for|pants for|jeans for|sneakers for|boots for|suit for|blazer for|tie for|belt for|watch for|accessory for|outfit|clothing|apparel|fashion|dress|wear|shorts|brand|ten thousand|lululemon)/i.test(message);
+  const askingForRecommendations = /(recommend|suggest|what|which|where can i|where to|how to|show me|can you|help me|looking for|need|want|get|buy|find|links)/i.test(message);
+  
+  // Only trigger product search when asking about clothing/outfits AND asking for recommendations
   const isProductRequest = clothingOutfitRequest && askingForRecommendations;
   
   console.log('DEBUG: clothingOutfitRequest:', clothingOutfitRequest);
@@ -285,6 +66,16 @@ exports.handleChat = async (req, res) => {
       { role: 'system', content: `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.
 You speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.
 Your tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.
+
+PERSONALITY TRAITS:
+- You're the friend who tells it like it is, but with love
+- You have a slight edge and attitude - you're not here to be everyone's cheerleader
+- You're confident and stylish yourself, so you know what works
+- You're playful and can be a little flirty, but not in a creepy way
+- You're observant and notice the little things that matter
+- You're direct and don't sugarcoat - if something's wrong, you say it
+- You have a sense of humor and can be witty
+- You're the friend who gives tough love when needed
 RULES — HARD ENFORCEMENT:
 DO NOT EVER USE:
 Emojis
@@ -296,34 +87,6 @@ Fake-humanism like "I've got your back," "That was me slipping," "I'm just handi
 Self-references or meta AI talk
 Vibe descriptions — do not narrate how an outfit feels
 Weather forecasts or overexplaining the obvious
-Pickup artist language like "Hey stud," "work your magic," "turn heads," "like a pro"
-Cheesy motivational phrases like "your charm speaks volumes," "confidence is your best accessory"
-"Playbook" language or sports metaphors
-"Showtime" or performance-based language
-
-ABSOLUTELY FORBIDDEN CLOSERS (NEVER END WITH THESE):
-"Rock it with confidence!"
-"Effortlessly cool!"
-"Time to level up your style!"
-"You're all set!"
-"Hope that helps!"
-"Let me know if you need anything else!"
-"Ready to slay!"
-"Looking sharp!"
-"Killing it!"
-"Own it!"
-"Confidence is key!"
-"Style game strong!"
-"Looking fire!"
-"Ready to turn heads!"
-"Style on point!"
-"Looking fresh!"
-"Ready to impress!"
-"Style goals!"
-"Looking fly!"
-"Ready to dominate!"
-
-NEVER END RESPONSES WITH MOTIVATIONAL CLOSERS. Just stop. Period.
 
 NEVER:
 Overexplain
@@ -374,12 +137,6 @@ Avoid influencer-core trends or loud, try-hard pieces
 Break down the outfit casually — not like a checklist or magazine editor
 Never describe the outfit's "vibe" — just say what looks good, clearly
 
-WHEN USER ASKS FOR NEW PRODUCT CATEGORIES:
-If user asks for a different product type than what you just discussed, ask clarifying questions first
-Examples: "What kind of jacket? Casual, dressy, or something in between?" "For what occasion?" "What's your style preference?"
-Don't assume they want the same brands from the previous conversation
-Focus on the new product category and get context before making recommendations
-
 START OF ANY NEW CONVERSATION:
 Jules gives a quick, personal intro — something like:
 "Hey !  Good to meet you.  Before we get started, tell me about yourself."
@@ -399,6 +156,12 @@ These are tone benchmarks. If it doesn't sound like these, it needs work.
 
 First Date (Cocktail Bar)
 Dark jeans, clean tee, and a jacket that doesn't look like effort. Suede bomber, overshirt, or Harrington. Clean boots or white sneakers — not gym shoes. Keep colors tight: navy, charcoal, black. Hair on point, breath fresh. You're not dressing for a gala. Just look like the guy she wants to sit next to.
+
+Breaking the Ice
+"Hey there! Breaking the ice at the bar? Here are some cool ways to kick things off: - Playful Comment: Make a lighthearted observation about something in the bar or a funny situation around you. - Shared Experience: Comment on the music, the drinks, or anything you both might be experiencing at the moment. - Creative Question: Ask something intriguing or unexpected to spark curiosity and conversation."
+
+Dive Bar Outfit
+"Effortless Edge: Layer with a casual jacket or a cozy flannel shirt for a rugged touch. - Footwear Choice: Keep it chill with clean sneakers or classic boots to complete the look."
 
 Gym Fit
 Black or navy shorts, solid tee. No neon, no tanks unless you're stacked and low-key about it. Shoes should say you lift — not that you just left CrossFit cosplay. Lululemon or Ten Thousand if you care, Target if you don't. Either way: clean. Also: deodorant.
@@ -427,7 +190,6 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
       ...recentMessages
     ];
     
-    // Get Jules's response
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages
@@ -436,7 +198,7 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];
-    let cleanedReply = stripForbiddenClosersAndReplaceWithPrompt(reply);
+    let cleanedReply = reply;
     const productLinkRegex = /!\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
     let match;
     while ((match = productLinkRegex.exec(reply)) !== null) {
@@ -459,64 +221,23 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
         const cseId = process.env.GOOGLE_CSE_ID;
         console.log('DEBUG: API Key exists:', !!apiKey);
         console.log('DEBUG: CSE ID exists:', !!cseId);
-        
-        // Extract brands from Jules's response (we already have the reply from above)
-        
-        // Extract brands from Jules's response
-        const brandRegex = /(lululemon|ten thousand|target|nike|adidas|under armour|uniqlo|h&m|zara|gap|old navy|levi's|calvin klein|tommy hilfiger|ralph lauren|brooks brothers|j\.crew|banana republic|express|hollister|abercrombie)/gi;
-        const mentionedBrands = reply.match(brandRegex);
-        
         let searchQuery = message;
         
-                  // Only use brands from Jules's response if they match the product type being requested
-          if (mentionedBrands && mentionedBrands.length > 0) {
-            const uniqueBrands = [...new Set(mentionedBrands.map(b => b.toLowerCase()))];
-            const requestedProductType = message.match(/(shorts|pants|shirt|jacket|shoes|sneakers|boots|jeans|sweater|hoodie|t-shirt|polo|chinos|vest|blazer|suit|coat)/i);
-            const responseProductType = reply.match(/(shorts|pants|shirt|jacket|shoes|sneakers|boots|jeans|sweater|hoodie|t-shirt|polo|chinos|vest|blazer|suit|coat)/i);
-            
-            // If user is asking for examples, use the product type from Jules's response
-            if (message.toLowerCase().includes('examples')) {
-              if (responseProductType) {
-                const productTypeStr = responseProductType[0];
-                searchQuery = `${uniqueBrands[0]} men's ${productTypeStr} buy shop`;
-                console.log('DEBUG: Using brand from Jules response for examples request:', uniqueBrands[0], 'product type:', productTypeStr);
-              } else {
-                // Fallback: use the brand with a generic search
-                searchQuery = `${uniqueBrands[0]} men's clothing buy shop`;
-                console.log('DEBUG: Using brand from Jules response with generic search:', uniqueBrands[0]);
-              }
-            } else if (requestedProductType && responseProductType && 
-                requestedProductType[0].toLowerCase() === responseProductType[0].toLowerCase()) {
-              // Only use brands if the product types match (user asking for same type Jules mentioned)
-              const productTypeStr = requestedProductType[0];
-              searchQuery = `${uniqueBrands[0]} men's ${productTypeStr} buy shop`;
-              console.log('DEBUG: Using brand from Jules response for matching product type:', uniqueBrands[0]);
-            } else {
-              console.log('DEBUG: Product type mismatch - user asked for:', requestedProductType?.[0], 'but Jules mentioned:', responseProductType?.[0]);
-            }
-          }
-        
-        // If no brands were mentioned in Jules's response, generate a more specific search query
-        if (!mentionedBrands || mentionedBrands.length === 0) {
-          try {
-            const llmResult = await openai.chat.completions.create({
-              model: 'gpt-3.5-turbo',
-              messages: [
-                { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a specific Google search query that will return ONLY the exact product being requested. Be very specific about the item. Examples: 'Ten Thousand men workout shorts buy', 'Lululemon men's running shorts purchase', 'Nike men's gym shorts shop'. Focus on the exact product mentioned, not general categories." },
-                { role: 'user', content: message }
-              ]
-            });
-            searchQuery = llmResult.choices[0].message.content.trim();
-            console.log('DEBUG: Generated search query:', searchQuery);
-          } catch (e) {
-            // Fallback: extract specific product terms and make a targeted search
-            const productTerms = message.match(/(?:ten thousand|lululemon|nike|adidas|under armour|target|amazon|workout|running|gym|training|shorts|pants|shirt|jacket|shoes|sneakers|boots)/gi);
-            if (productTerms && productTerms.length > 0) {
-              searchQuery = `men's ${productTerms.join(' ')} buy shop`;
-            } else {
-              searchQuery = `men's ${message} buy shop`;
-            }
-            console.log('DEBUG: Fallback search query:', searchQuery);
+        // Use LLM to generate a better search query
+        try {
+          const llmResult = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
+              { role: 'user', content: message }
+            ]
+          });
+          searchQuery = llmResult.choices[0].message.content.trim();
+        } catch (e) {
+          if (!/men|guy|male|gentleman|menswear/i.test(message)) {
+            searchQuery = `men's ${message} buy shop`;
+          } else {
+            searchQuery = `${message} buy shop`;
           }
         }
         
@@ -531,13 +252,10 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
         });
         
         const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
-        const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|wikipedia|quora|stackoverflow/i;
-        const shoppingSites = /amazon|target|walmart|bestbuy|macys|nordstrom|bloomingdales|saks|neiman|barneys|shop|store|buy|purchase|retail/i;
-        
+        const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review/i;
         const searchProducts = (response.data.items || [])
           .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
           .filter(item => !nonProductSites.test(item.link))
-          .filter(item => shoppingSites.test(item.link) || shoppingSites.test(item.title + ' ' + (item.snippet || '')))
           .slice(0, 3)
           .map((item, index) => ({
             title: item.title || `Option ${index + 1}`,
@@ -653,21 +371,17 @@ exports.productSearch = async (req, res) => {
     const llmResult = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
-        { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a specific Google search query that will return ONLY the exact product being requested. Be very specific about the item. Examples: 'Ten Thousand men workout shorts buy', 'Lululemon men's running shorts purchase', 'Nike men's gym shorts shop'. Focus on the exact product mentioned, not general categories." },
+        { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
         { role: 'user', content: query }
       ]
     });
     searchQuery = llmResult.choices[0].message.content.trim();
-    console.log('DEBUG: ProductSearch generated query:', searchQuery);
   } catch (e) {
-    // Fallback: extract specific product terms and make a targeted search
-    const productTerms = query.match(/(?:ten thousand|lululemon|nike|adidas|under armour|target|amazon|workout|running|gym|training|shorts|pants|shirt|jacket|shoes|sneakers|boots)/gi);
-    if (productTerms && productTerms.length > 0) {
-      searchQuery = `men's ${productTerms.join(' ')} buy shop`;
-    } else {
+    if (!/men|guy|male|gentleman|menswear/i.test(query)) {
       searchQuery = `men's ${query} buy shop`;
+    } else {
+      searchQuery = `${query} buy shop`;
     }
-    console.log('DEBUG: ProductSearch fallback query:', searchQuery);
   }
   try {
     const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
@@ -680,14 +394,11 @@ exports.productSearch = async (req, res) => {
       },
     });
     const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
-    const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|wikipedia|quora|stackoverflow/i;
-    const shoppingSites = /amazon|target|walmart|bestbuy|macys|nordstrom|bloomingdales|saks|neiman|barneys|shop|store|buy|purchase|retail/i;
-    
+    const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review/i;
     // Try to extract product info (name, image, price, description, link)
     const products = (response.data.items || [])
       .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
       .filter(item => !nonProductSites.test(item.link))
-      .filter(item => shoppingSites.test(item.link) || shoppingSites.test(item.title + ' ' + (item.snippet || '')))
       .slice(0, 4)
       .map(item => ({
         title: item.title,
