@@ -75,7 +75,24 @@ const forbiddenCloserPatterns = [
   /conversation you/i,
   /conversation your/i,
   /conversation's/i,
-  /conversation’s/i
+  /conversation’s/i,
+  // Question-based closers that force conversation
+  /ready to (hit|step|level|take|go)/i,
+  /how do you feel about/i,
+  /what do you think/i,
+  /what are your thoughts/i,
+  /how does that sound/i,
+  /does that make sense/i,
+  /does that help/i,
+  /want to (dive|explore|discuss|talk)/i,
+  /shall we (continue|explore|discuss)/i,
+  /can I (help|assist|guide)/i,
+  /would you like (more|to|help)/i,
+  /do you want (to|more|help)/i,
+  /any (thoughts|questions|concerns)/i,
+  /got any (questions|thoughts)/i,
+  /have any (questions|thoughts)/i,
+  /need any (help|guidance|clarification)/i
 ];
 
 function stripForbiddenClosersAndReplaceWithPrompt(text) {
@@ -95,21 +112,7 @@ function stripForbiddenClosersAndReplaceWithPrompt(text) {
   }
   // If all sentences were removed, fallback to original text
   if (sentences.length === 0) return "What else would you like to talk about?";
-  // If the last sentence is generic or not open-ended, add a conversational prompt
-  const last = sentences[sentences.length - 1];
-  const openEndedPrompts = [
-    "What do you think?",
-    "Anything else on your mind?",
-    "What are your thoughts?",
-    "Is there anything else you'd like to ask?",
-    "Want to dive deeper into this?",
-    "How does that sound to you?",
-    "Anything else you want to share?"
-  ];
-  // If the last sentence is not a question and not open-ended, add a prompt
-  if (!/[?]$/.test(last) && !/let's|let us|would you like|do you want|can I|shall we|how about|what about|is there anything else|anything else/i.test(last)) {
-    sentences.push(openEndedPrompts[Math.floor(Math.random() * openEndedPrompts.length)]);
-  }
+  // Do NOT add a prompt or question at the end. Just return the stripped text.
   return sentences.join(' ');
 }
 
