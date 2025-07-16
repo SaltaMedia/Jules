@@ -150,12 +150,21 @@ function stripForbiddenClosersAndReplaceWithPrompt(text) {
   // Remove trailing whitespace
   sentences = sentences.map(s => s.trim());
   
-  // More aggressive approach: check each sentence from the end and remove any that contain forbidden patterns
+  // SUPER aggressive approach: check each sentence from the end and remove any that look like closers
   let i = sentences.length - 1;
   while (i >= 0) {
     const sentence = sentences[i];
-    // Check if this sentence contains any forbidden pattern
-    if (forbiddenCloserPatterns.some(pattern => pattern.test(sentence))) {
+    
+    // Check for exact forbidden patterns
+    const hasForbiddenPattern = forbiddenCloserPatterns.some(pattern => pattern.test(sentence));
+    
+    // Check for broader closer indicators
+    const hasCloserIndicators = 
+      /(you\\'?ve got|you have|you\\'?re ready|ready to|time to|go |now |need |want |have |got |fire away|bring it|let\\'?s |shall we|can i|would you|do you|any |got any|have any|need any|reach out|get back|hit me|shoot me|drop me|keep me|feel free|don\\'?t hesitate|if you need|anything else|other questions|other concerns|more tips|more help|more guidance|specific scenario|scenario in mind|in mind|mind\?|tips or|or have|have a|a specific|specific scenario)/i.test(sentence) ||
+      /(magic|charm|shine|rock|work|level up|step up|amp up|turn heads|impress|dominate|slay|kill|own|confidence|style|game|fire|fresh|fly|sharp|goals|on point|strong)/i.test(sentence) ||
+      sentence.includes('?') && /(need|want|have|got|tips|help|guidance|scenario|mind|else|other|more)/i.test(sentence);
+    
+    if (hasForbiddenPattern || hasCloserIndicators) {
       sentences.splice(i, 1);
     }
     i--;
