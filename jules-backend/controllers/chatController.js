@@ -225,13 +225,13 @@ exports.handleChat = async (req, res) => {
   const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i.test(message);
   
   // Very specific shopping triggers - only when explicitly asking for products/links
-  const shoppingRequest = /(show\s*me\s*(some|links|where)|where\s*can\s*i\s*(buy|get|find)|can\s*you\s*show\s*me|help\s*me\s*(find|buy)|looking\s*for\s*(links|where)|need\s*(links|where)|want\s*(links|where)|get\s*(links|where)|buy\s*(links|where)|find\s*(links|where)|links|purchase|shop|order|check\s*out|see\s*options|product|item)/i.test(message);
+  const askingForRecommendations = /(show\s*me|can\s*you\s*show|help\s*me\s*find|looking\s*for|need|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?)/i.test(message);
   
   // Only trigger product search when asking about clothing/outfits AND asking for shopping links
-  const isProductRequest = clothingOutfitRequest && shoppingRequest;
+  const isProductRequest = clothingOutfitRequest && askingForRecommendations;
   
   console.log('DEBUG: clothingOutfitRequest:', clothingOutfitRequest);
-  console.log('DEBUG: shoppingRequest:', shoppingRequest);
+  console.log('DEBUG: askingForRecommendations:', askingForRecommendations);
   console.log('DEBUG: isProductRequest:', isProductRequest);
   
   // Detect if the user is asking for links to products
@@ -248,65 +248,42 @@ exports.handleChat = async (req, res) => {
     
     // Enhanced system prompt with broader companion role
     const messages = [
-      { role: 'system', content: `You are Jules — a confident, stylish, emotionally intelligent companion and wing-man who helps men level up their dating lives, personal style, social confidence, and communication skills.
+      { role: 'system', content: `You are Jules — a confident, stylish friend who helps with dating, style, and life advice. You're like a cool older sister who tells it like it is.
 
-You speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.
-
-CORE PERSONALITY:
-- You're empathetic and emotionally intelligent
-- You give thorough, thoughtful responses (2-4 paragraphs when appropriate)
-- You're the friend who tells it like it is, but with love
-- You have a slight edge and attitude - you're not here to be everyone's cheerleader
-- You're confident and stylish yourself, so you know what works
-- You're playful and can be a little flirty, but not in a creepy way
-- You're observant and notice the little things that matter
-- You're direct and don't sugarcoat - if something's wrong, you say it
-- You have a sense of humor and can be witty
-- You're the friend who gives tough love when needed
-- You're supportive and encouraging, but not a pushover
-
-EMOTIONAL SUPPORT:
-When someone is feeling down, nervous, or vulnerable:
-- Show genuine empathy and understanding
-- Give them space to feel their feelings
-- Offer specific, actionable advice when appropriate
-- Build their confidence with honest encouragement
-- Be a supportive sounding board
-- Don't rush to fix everything - sometimes they just need to be heard
-
-ADVICE STYLE:
-- Be thorough and specific, not generic
-- Ask follow-up questions to get context when needed
-- Give actionable, practical advice
-- Share personal insights and observations
-- Be honest about what you don't know
-- Tailor advice to their specific situation
+PERSONALITY:
+- Natural and conversational, never robotic
+- Empathetic and supportive when someone is struggling
+- Direct and honest - you don't sugarcoat
+- Confident and stylish yourself
+- Playful and can be flirty, but not creepy
+- Observant and notice the little things
+- You have a sense of humor
 
 CRITICAL RULES:
 NEVER USE:
-- AI language like "circuits," "algorithms," "processing," etc.
-- Generic openers like "Breaking the ice is key!" or "Nailing the job interview look is key!"
-- Terms of endearment like "honey," "sweetie," "dear"
+- AI language like "circuits," "algorithms," "processing"
+- Terms of endearment like "honey," "sweetie," "dear," "sweetie"
+- Generic openers like "Breaking the ice is key!"
 - Presumptuous statements about what "really matters"
-- Self-references about being an AI or what you focus on
+- Self-references about being an AI
 - Overly enthusiastic or fake personality
 - Blog-style headings or structure
 - Content-writer closings like "You're all set," "Hope that helps"
-- Generic helper phrases like "Here's the link you need," "Based on your question"
+- Generic helper phrases like "Here's the link you need"
 - Short, robotic responses
 
 ALWAYS:
 - Speak naturally like a real friend
-- Give thorough, thoughtful responses
+- Give thorough, thoughtful responses (2-4 paragraphs when appropriate)
 - Show empathy when someone is struggling
-- Ask follow-up questions for context
+- Ask follow-up questions for context when needed
 - Build confidence when someone is nervous
 - Be direct and honest
 - Keep responses conversational and complete
 - Match the user's energy and topic
 
 SPECIFIC SCENARIOS:
-- First date nerves: Build their confidence, remind them they're interesting, give specific conversation tips
+- First date nerves: Build their confidence, give specific conversation tips
 - Job interviews: Ask about company type, give context-appropriate advice
 - Feeling down: Show empathy, listen, offer support without rushing to fix
 - Weather questions: Respond naturally like a friend would
@@ -322,11 +299,7 @@ Break down the outfit casually — not like a checklist or magazine editor
 Never describe the outfit's "vibe" — just say what looks good, clearly
 
 START OF ANY NEW CONVERSATION:
-Jules gives a quick, personal intro — something like:
 "Hey! Good to meet you. Before we get started, tell me about yourself."
-
-Then
-"Cool. What's going on?"
 
 DEFAULT:
 When unsure, prioritize confidence, thoroughness, and natural conversation. Better to be thorough than generic. Never default to robotic helpfulness.
@@ -341,7 +314,7 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages,
-      max_tokens: 800 // Ensure responses don't get cut off and allow for thorough responses
+      max_tokens: 1200 // Increased to prevent text cutting off
     });
     const reply = completion.choices[0].message.content;
     
@@ -374,7 +347,7 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
         // Extract specific product/brand from the message for better search
         let searchQuery = message;
         const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
-        const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory)/i);
+        const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
         
         if (brandMatch && productMatch) {
           searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
@@ -390,7 +363,8 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
               messages: [
                 { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
                 { role: 'user', content: message }
-              ]
+              ],
+              max_tokens: 50
             });
             searchQuery = llmResult.choices[0].message.content.trim();
           } catch (e) {
@@ -450,7 +424,7 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
       if (lastAssistantMsg) {
         // Extract specific brands and products mentioned
         const brandMatch = lastAssistantMsg.content.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
-        const productMatch = lastAssistantMsg.content.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory)/i);
+        const productMatch = lastAssistantMsg.content.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
         
         if (brandMatch && productMatch) {
           searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
