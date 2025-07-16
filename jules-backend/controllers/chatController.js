@@ -140,7 +140,34 @@ const forbiddenCloserPatterns = [
   /tips or have/i,
   /or have a specific/i,
   /have a specific/i,
-  /a specific scenario/i
+  /a specific scenario/i,
+  // Cringy/over-the-top closers
+  /your charisma is irresistible/i,
+  /charisma is irresistible/i,
+  /irresistible, after all/i,
+  /after all/i,
+  /it\\'?s showtime/i,
+  /showtime, baby/i,
+  /showtime baby/i,
+  /let me know/i,
+  /let me know!/i,
+  /let me know\?/i,
+  /suave/i,
+  /magic at the bar/i,
+  /work your magic/i,
+  /your magic/i,
+  /own the night/i,
+  /own the space/i,
+  /genius/i,
+  /like a pro/i,
+  /pro/i,
+  /stage left/i,
+  /exit stage left/i,
+  /gracefully exit/i,
+  /irresistible/i,
+  /charisma/i,
+  /baby/i,
+  /showtime/i
 ];
 
 function stripForbiddenClosersAndReplaceWithPrompt(text) {
