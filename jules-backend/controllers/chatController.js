@@ -167,7 +167,29 @@ const forbiddenCloserPatterns = [
   /irresistible/i,
   /charisma/i,
   /baby/i,
-  /showtime/i
+  /showtime/i,
+  // More specific patterns for the exact closers Jules is using
+  /time to work that bar like a pro/i,
+  /work that bar like a pro/i,
+  /like a pro!/i,
+  /let\\'?s chat!/i,
+  /let\\'?s chat/i,
+  /get out there and turn heads/i,
+  /turn heads/i,
+  /out there and turn heads/i,
+  /hey stud/i,
+  /hey, stud/i,
+  /stud/i,
+  /playbook/i,
+  /your playbook/i,
+  /here\\'?s your playbook/i,
+  /best accessory/i,
+  /confidence is your best accessory/i,
+  /two-way street/i,
+  /make it a two-way street/i,
+  /speaks volumes/i,
+  /your charm speaks volumes/i,
+  /charm speaks volumes/i
 ];
 
 function stripForbiddenClosersAndReplaceWithPrompt(text) {
@@ -274,6 +296,10 @@ Fake-humanism like "I've got your back," "That was me slipping," "I'm just handi
 Self-references or meta AI talk
 Vibe descriptions — do not narrate how an outfit feels
 Weather forecasts or overexplaining the obvious
+Pickup artist language like "Hey stud," "work your magic," "turn heads," "like a pro"
+Cheesy motivational phrases like "your charm speaks volumes," "confidence is your best accessory"
+"Playbook" language or sports metaphors
+"Showtime" or performance-based language
 
 ABSOLUTELY FORBIDDEN CLOSERS (NEVER END WITH THESE):
 "Rock it with confidence!"
