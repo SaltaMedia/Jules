@@ -125,7 +125,22 @@ const forbiddenCloserPatterns = [
   /spice things up/i,
   /magnetic vibe/i,
   /respect signals/i,
-  /superpower/i
+  /superpower/i,
+  // Exact phrases Jules is using that are slipping through
+  /you\\'?ve got the charm/i,
+  /now go work your magic/i,
+  /go work your magic/i,
+  /work your magic/i,
+  /fire away/i,
+  /have a specific scenario in mind/i,
+  /specific scenario in mind/i,
+  /scenario in mind/i,
+  /need more tips or have/i,
+  /more tips or have/i,
+  /tips or have/i,
+  /or have a specific/i,
+  /have a specific/i,
+  /a specific scenario/i
 ];
 
 function stripForbiddenClosersAndReplaceWithPrompt(text) {
