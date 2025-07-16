@@ -205,7 +205,7 @@ exports.handleChat = async (req, res) => {
   // Only trigger image response for actual image requests, not product/link requests
   // Also exclude common non-image phrases that might contain "like"
   const isImageRequest = imageRequestRegex.test(message) && 
-    !/(link|product|buy|shop|where|recommend|suggest|shorts|brand|ten thousand|lululemon|nike|adidas|jacket|shirt|jeans|pants|shoes|boots|suit|blazer|coat|sweater|henley|tee|t-shirt|polo|chinos|vest|waistcoat|sneakers|loafers|oxfords|derbies|pick\s*up\s*line|pickup\s*line|line|conversation|chat|talk|dating|date|girl|woman|women|flirt|flirting)/i.test(message);
+    !/(link|product|buy|shop|where|recommend|suggest|shorts|brand|ten thousand|lululemon|nike|adidas|jacket|shirt|jeans|pants|shoes|boots|suit|blazer|coat|sweater|henley|tee|t-shirt|polo|chinos|vest|waistcoat|sneakers|loafers|oxfords|derbies|pick\s*up\s*line|pickup\s*line|line|conversation|chat|talk|dating|date|girl|woman|women|flirt|flirting|interview|job|company|role|position|tips|advice|help|guidance|assistance|support|question|ask|tell|explain|describe|discuss|talk\s*about|what\s*do\s*you\s*think|opinion|view|perspective|thoughts|feelings|emotions|mood|sad|happy|excited|nervous|worried|stressed|anxious|confident|prepared|ready|tomorrow|today|yesterday|week|month|year|time|schedule|plan|prepare|practice|rehearse|research|study|learn|understand|know|familiar|experience|background|history|story|situation|circumstance|context|details|information|facts|data|statistics|numbers|percentages|rates|scores|grades|results|outcomes|effects|impacts|consequences|benefits|advantages|disadvantages|pros|cons|positives|negatives|good|bad|better|worse|best|worst|improve|enhance|boost|increase|decrease|reduce|minimize|maximize|optimize|perfect|ideal|optimal|suitable|appropriate|relevant|related|connected|linked|associated|correlated|similar|different|unique|special|particular|specific|general|broad|narrow|wide|limited|extended|expanded|detailed|comprehensive|thorough|complete|partial|incomplete|finished|unfinished|done|undone|ready|unready|prepared|unprepared|organized|disorganized|structured|unstructured|planned|unplanned|scheduled|unscheduled|timed|untimed|measured|unmeasured|quantified|unquantified|assessed|unassessed|evaluated|unevaluated|reviewed|unreviewed|examined|unexamined|analyzed|unanalyzed|studied|unstudied|researched|unresearched|investigated|uninvestigated|explored|unexplored|discovered|undiscovered|found|unfound|identified|unidentified|recognized|unrecognized|noticed|unnoticed|observed|unobserved|seen|unseen|viewed|unviewed|watched|unwatched|monitored|unmonitored|tracked|untracked|followed|unfollowed|pursued|unpursued|chased|unchased|hunted|unhunted|sought|unsought|looked|unlooked|searched|unsearched|explored|unexplored|investigated|uninvestigated|examined|unexamined|studied|unstudied|researched|unresearched|analyzed|unanalyzed|reviewed|unreviewed|assessed|unassessed|evaluated|unevaluated|measured|unmeasured|quantified|unquantified|timed|untimed|scheduled|unscheduled|planned|unplanned|organized|disorganized|structured|unstructured|prepared|unprepared|ready|unready|done|undone|finished|unfinished|complete|incomplete|thorough|unthorough|comprehensive|uncomprehensive|detailed|undetailed|extended|unextended|expanded|unexpanded|broad|narrow|wide|limited|general|specific|particular|special|unique|different|similar|correlated|associated|linked|connected|related|relevant|appropriate|suitable|optimal|ideal|perfect|maximize|minimize|reduce|increase|boost|enhance|improve|worst|best|worse|better|bad|good|negatives|positives|cons|pros|disadvantages|advantages|benefits|consequences|impacts|effects|outcomes|results|grades|scores|rates|percentages|numbers|data|facts|information|details|context|circumstance|situation|story|history|background|experience|familiar|know|understand|learn|study|research|practice|rehearse|prepare|plan|schedule|time|year|month|week|yesterday|today|tomorrow|ready|prepared|confident|anxious|stressed|worried|nervous|excited|happy|sad|emotions|feelings|thoughts|perspective|view|opinion|what\s*do\s*you\s*think|discuss|talk\s*about|describe|explain|tell|ask|question|support|assistance|guidance|help|advice|tips|position|role|company|job|interview)/i.test(message);
   
   console.log('DEBUG: isImageRequest:', isImageRequest);
   
@@ -314,7 +314,7 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages,
-      max_tokens: 1200 // Increased to prevent text cutting off
+      // Removed max_tokens to allow unlimited response length
     });
     const reply = completion.choices[0].message.content;
     
@@ -344,7 +344,7 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
         console.log('DEBUG: API Key exists:', !!apiKey);
         console.log('DEBUG: CSE ID exists:', !!cseId);
         
-        // Extract specific product/brand from the message for better search
+        // Use the actual user message for search, not extracted content
         let searchQuery = message;
         const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
         const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
@@ -356,24 +356,8 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
         } else if (productMatch) {
           searchQuery = `men's ${productMatch[0]} buy shop`;
         } else {
-          // Use LLM to generate a better search query
-          try {
-            const llmResult = await openai.chat.completions.create({
-              model: 'gpt-3.5-turbo',
-              messages: [
-                { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
-                { role: 'user', content: message }
-              ],
-              max_tokens: 50
-            });
-            searchQuery = llmResult.choices[0].message.content.trim();
-          } catch (e) {
-            if (!/men|guy|male|gentleman|menswear/i.test(message)) {
-              searchQuery = `men's ${message} buy shop`;
-            } else {
-              searchQuery = `${message} buy shop`;
-            }
-          }
+          // Use the original message with "men's" prefix for better results
+          searchQuery = `men's ${message} buy shop`;
         }
         
         console.log('DEBUG: Generated search query:', searchQuery);
@@ -418,31 +402,24 @@ If it sounds like a stylish, clever friend with taste and empathy, it's right.
     // If user is asking for links, try to extract product/brand names from last assistant message
     if (isLinkRequest) {
       console.log('DEBUG: Link request detected, extracting products from conversation...');
-      // Find the last assistant message
-      const lastAssistantMsg = [...conversation.messages].reverse().find(m => m.role === 'assistant');
-      let searchQuery = '';
-      if (lastAssistantMsg) {
-        // Extract specific brands and products mentioned
-        const brandMatch = lastAssistantMsg.content.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
-        const productMatch = lastAssistantMsg.content.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
-        
-        if (brandMatch && productMatch) {
-          searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
-        } else if (brandMatch) {
-          searchQuery = `${brandMatch[0]} men's clothing buy shop`;
-        } else if (productMatch) {
-          searchQuery = `men's ${productMatch[0]} buy shop`;
-        } else {
-          // Fallback to general brand/product extraction
-          const brandProductRegex = /([A-Z][a-zA-Z0-9&'\-]+(?:\s+[A-Z][a-zA-Z0-9&'\-]+){0,3})/g;
-          const matches = lastAssistantMsg.content.match(brandProductRegex);
-          if (matches && matches.length > 0) {
-            searchQuery = matches.filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' ') + ' men buy shop';
-          }
-        }
+      // Use the user's message directly for search instead of extracting from Jules's response
+      let searchQuery = message;
+      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+      const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
+      
+      if (brandMatch && productMatch) {
+        searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
+      } else if (brandMatch) {
+        searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+      } else if (productMatch) {
+        searchQuery = `men's ${productMatch[0]} buy shop`;
+      } else {
+        // Use the original message with "men's" prefix for better results
+        searchQuery = `men's ${message} buy shop`;
       }
+      
       if (searchQuery) {
-        console.log('DEBUG: Using brand from Jules response:', searchQuery);
+        console.log('DEBUG: Using search query from user message:', searchQuery);
         // Run product search for the extracted brands/products
         try {
           const apiKey = process.env.GOOGLE_API_KEY;
