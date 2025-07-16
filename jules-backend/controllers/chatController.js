@@ -99,14 +99,51 @@ function stripClosers(text) {
     /(?:More style questions.*?)([.!?])?$/i,
     /(?:Any more style questions.*?)([.!?])?$/i,
     /(?:Got any other style questions.*?)([.!?])?$/i,
-    /(?:Have any other style questions.*?)([.!?])?$/i
+    /(?:Have any other style questions.*?)([.!?])?$/i,
+    /(?:Stay comfortable.*?)([.!?])?$/i,
+    /(?:Stay stylish.*?)([.!?])?$/i,
+    /(?:enjoy the views.*?)([.!?])?$/i,
+    /(?:with confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?)([.!?])?$/i,
+    /(?:Stay.*?stylish.*?)([.!?])?$/i,
+    /(?:enjoy.*?views.*?)([.!?])?$/i,
+    /(?:with.*?confidence.*?)([.!?])?$/i,
+    /(?:comfortable.*?stylish.*?)([.!?])?$/i,
+    /(?:stylish.*?confidence.*?)([.!?])?$/i,
+    /(?:comfortable.*?confidence.*?)([.!?])?$/i,
+    /(?:enjoy.*?confidence.*?)([.!?])?$/i,
+    /(?:views.*?confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?enjoy.*?)([.!?])?$/i,
+    /(?:Stay.*?views.*?)([.!?])?$/i,
+    /(?:Stay.*?confidence.*?)([.!?])?$/i,
+    /(?:comfortable.*?enjoy.*?)([.!?])?$/i,
+    /(?:comfortable.*?views.*?)([.!?])?$/i,
+    /(?:stylish.*?enjoy.*?)([.!?])?$/i,
+    /(?:stylish.*?views.*?)([.!?])?$/i,
+    /(?:confidence.*?enjoy.*?)([.!?])?$/i,
+    /(?:confidence.*?views.*?)([.!?])?$/i,
+    /(?:comfortable.*?stylish.*?confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?stylish.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?stylish.*?confidence.*?)([.!?])?$/i,
+    /(?:comfortable.*?stylish.*?enjoy.*?)([.!?])?$/i,
+    /(?:comfortable.*?stylish.*?views.*?)([.!?])?$/i,
+    /(?:stylish.*?enjoy.*?confidence.*?)([.!?])?$/i,
+    /(?:enjoy.*?views.*?confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?stylish.*?enjoy.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?stylish.*?views.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?stylish.*?confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?enjoy.*?confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?stylish.*?enjoy.*?confidence.*?)([.!?])?$/i,
+    /(?:comfortable.*?stylish.*?enjoy.*?confidence.*?)([.!?])?$/i,
+    /(?:Stay.*?comfortable.*?stylish.*?enjoy.*?confidence.*?)([.!?])?$/i
   ];
   let result = text;
   closerPatterns.forEach(pattern => {
     result = result.replace(pattern, '').trim();
   });
   // Remove trailing hype/closer sentences (e.g., "You're all set!", "Hope that helps!", etc.)
-  result = result.replace(/([.!?])\s+([A-Z][^.!?]{0,40}(all set|let me know|hope this helps|keep bringing|keep dishing|rock it|effortlessly cool|level up|my friend|just say the word|got you covered|keep bringing|keep dishing|let's do this|treat yourself|up your workout game|showtime baby|charisma is irresistible|just a message away|here whenever you need|keep the style rolling|always ready to help|ready to help you|just say the word|here to help|let's keep going|let's dial up your cool factor|let's get started|let's level up|let's shop|let's argue|let's fix|let's move|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin|let's move|let's fix|let's argue|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin)[^.!?]{0,40}[.!?])/gi, '$1');
+  result = result.replace(/([.!?])\s+([A-Z][^.!?]{0,40}(all set|let me know|hope this helps|keep bringing|keep dishing|rock it|effortlessly cool|level up|my friend|just say the word|got you covered|keep bringing|keep dishing|let's do this|treat yourself|up your workout game|showtime baby|charisma is irresistible|just a message away|here whenever you need|keep the style rolling|always ready to help|ready to help you|just say the word|here to help|let's keep going|let's dial up your cool factor|let's get started|let's level up|let's shop|let's argue|let's fix|let's move|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin|let's move|let's fix|let's argue|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin|stay comfortable|stay stylish|enjoy the views|with confidence|comfortable|stylish|enjoy|views|confidence)[^.!?]{0,40}[.!?])/gi, '$1');
   return result;
 }
 
