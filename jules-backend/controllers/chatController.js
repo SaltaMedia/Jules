@@ -221,11 +221,11 @@ exports.handleChat = async (req, res) => {
     return res.json({ reply: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance.", products: [] });
   }
 
-  // Only trigger product search when asking about specific clothing/outfits
-  const clothingOutfitRequest = /(what should i wear|outfit for|dress for|what to wear|shoes for|jacket for|shirt for|pants for|jeans for|sneakers for|boots for|suit for|blazer for|tie for|belt for|watch for|accessory for|outfit|clothing|apparel|fashion|dress|wear|shorts|brand|ten thousand|lululemon)/i.test(message);
+  // More specific product detection - only trigger for explicit shopping requests
+  const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i.test(message);
   
-  // More specific: only trigger for shopping/product requests, not style advice
-  const shoppingRequest = /(recommend|suggest|where can i|where to|show me|can you|help me|looking for|need|want|get|buy|find|links|purchase|shop|order|check out|see options|product|item)/i.test(message);
+  // Very specific shopping triggers - only when explicitly asking for products/links
+  const shoppingRequest = /(show\s*me\s*(some|links|where)|where\s*can\s*i\s*(buy|get|find)|can\s*you\s*show\s*me|help\s*me\s*(find|buy)|looking\s*for\s*(links|where)|need\s*(links|where)|want\s*(links|where)|get\s*(links|where)|buy\s*(links|where)|find\s*(links|where)|links|purchase|shop|order|check\s*out|see\s*options|product|item)/i.test(message);
   
   // Only trigger product search when asking about clothing/outfits AND asking for shopping links
   const isProductRequest = clothingOutfitRequest && shoppingRequest;
@@ -246,7 +246,7 @@ exports.handleChat = async (req, res) => {
     conversation.messages.push({ role: 'user', content: message });
     const recentMessages = conversation.messages.slice(-10);
     
-    // System prompt: NO images, links, or placeholders. Only text advice. No mention of images in any example.
+    // Enhanced system prompt with better handling for non-fashion topics
     const messages = [
       { role: 'system', content: `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.
 You speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.
@@ -261,6 +261,7 @@ PERSONALITY TRAITS:
 - You're direct and don't sugarcoat - if something's wrong, you say it
 - You have a sense of humor and can be witty
 - You're the friend who gives tough love when needed
+
 RULES — HARD ENFORCEMENT:
 DO NOT EVER USE:
 Emojis
@@ -284,6 +285,12 @@ Speak like a clever, hot friend — natural, stylish, direct
 Keep responses short and punchy (2-3 short paragraphs max)
 Be bold, funny, sharp, fast
 Assume the user is smart and stylish-curious
+
+FOR NON-FASHION TOPICS (weather, general questions, etc.):
+- Keep it casual and conversational
+- Don't try to force fashion advice into every response
+- Be direct and honest about what you can/can't help with
+- Stay in character but don't overreach
 
 ANTI-PATTERNS (REWRITE)
 These are hard NOs. If it sounds like these, it's wrong.
@@ -321,8 +328,6 @@ Never include fast fashion or hypebeast cosplay (e.g., Shein, Fashion Nova, H&M)
 Avoid influencer-core trends or loud, try-hard pieces
 Break down the outfit casually — not like a checklist or magazine editor
 Never describe the outfit's "vibe" — just say what looks good, clearly
-
-
 
 START OF ANY NEW CONVERSATION:
 Jules gives a quick, personal intro — something like:
@@ -379,7 +384,8 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
     
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages
+      messages,
+      max_tokens: 500 // Ensure responses don't get cut off
     });
     const reply = completion.choices[0].message.content;
     
@@ -408,25 +414,39 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
         const cseId = process.env.GOOGLE_CSE_ID;
         console.log('DEBUG: API Key exists:', !!apiKey);
         console.log('DEBUG: CSE ID exists:', !!cseId);
-        let searchQuery = message;
         
-        // Use LLM to generate a better search query
-        try {
-          const llmResult = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
-              { role: 'user', content: message }
-            ]
-          });
-          searchQuery = llmResult.choices[0].message.content.trim();
-        } catch (e) {
-          if (!/men|guy|male|gentleman|menswear/i.test(message)) {
-            searchQuery = `men's ${message} buy shop`;
-          } else {
-            searchQuery = `${message} buy shop`;
+        // Extract specific product/brand from the message for better search
+        let searchQuery = message;
+        const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+        const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory)/i);
+        
+        if (brandMatch && productMatch) {
+          searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
+        } else if (brandMatch) {
+          searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+        } else if (productMatch) {
+          searchQuery = `men's ${productMatch[0]} buy shop`;
+        } else {
+          // Use LLM to generate a better search query
+          try {
+            const llmResult = await openai.chat.completions.create({
+              model: 'gpt-3.5-turbo',
+              messages: [
+                { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
+                { role: 'user', content: message }
+              ]
+            });
+            searchQuery = llmResult.choices[0].message.content.trim();
+          } catch (e) {
+            if (!/men|guy|male|gentleman|menswear/i.test(message)) {
+              searchQuery = `men's ${message} buy shop`;
+            } else {
+              searchQuery = `${message} buy shop`;
+            }
           }
         }
+        
+        console.log('DEBUG: Generated search query:', searchQuery);
         
         const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
           params: {
@@ -439,10 +459,11 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
         });
         
         const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
-        const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review/i;
+        const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
         const searchProducts = (response.data.items || [])
           .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
           .filter(item => !nonProductSites.test(item.link))
+          .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion/i.test(item.title + ' ' + (item.snippet || ''))) // Only shopping/product sites
           .slice(0, 3)
           .map((item, index) => ({
             title: item.title || `Option ${index + 1}`,
@@ -471,16 +492,27 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
       const lastAssistantMsg = [...conversation.messages].reverse().find(m => m.role === 'assistant');
       let searchQuery = '';
       if (lastAssistantMsg) {
-        // Try to extract product/brand names using a simple regex (capitalized words, numbers, etc.)
-        // This can be improved with NLP or LLM if needed
-        const brandProductRegex = /([A-Z][a-zA-Z0-9&'\-]+(?:\s+[A-Z][a-zA-Z0-9&'\-]+){0,3})/g;
-        const matches = lastAssistantMsg.content.match(brandProductRegex);
-        if (matches && matches.length > 0) {
-          // Use up to 3 unique matches as the search query
-          searchQuery = matches.filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' ');
+        // Extract specific brands and products mentioned
+        const brandMatch = lastAssistantMsg.content.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+        const productMatch = lastAssistantMsg.content.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory)/i);
+        
+        if (brandMatch && productMatch) {
+          searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
+        } else if (brandMatch) {
+          searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+        } else if (productMatch) {
+          searchQuery = `men's ${productMatch[0]} buy shop`;
+        } else {
+          // Fallback to general brand/product extraction
+          const brandProductRegex = /([A-Z][a-zA-Z0-9&'\-]+(?:\s+[A-Z][a-zA-Z0-9&'\-]+){0,3})/g;
+          const matches = lastAssistantMsg.content.match(brandProductRegex);
+          if (matches && matches.length > 0) {
+            searchQuery = matches.filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' ') + ' men buy shop';
+          }
         }
       }
       if (searchQuery) {
+        console.log('DEBUG: Using brand from Jules response:', searchQuery);
         // Run product search for the extracted brands/products
         try {
           const apiKey = process.env.GOOGLE_API_KEY;
@@ -495,10 +527,11 @@ Slim joggers or dark jeans, fitted crew or hoodie, clean white sneakers. Maybe a
             },
           });
           const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
-          const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review/i;
+          const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
           const searchProducts = (response.data.items || [])
             .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
             .filter(item => !nonProductSites.test(item.link))
+            .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion/i.test(item.title + ' ' + (item.snippet || ''))) // Only shopping/product sites
             .slice(0, 3)
             .map((item, index) => ({
               title: item.title || `Option ${index + 1}`,
