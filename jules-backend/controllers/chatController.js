@@ -131,16 +131,11 @@ exports.handleChat = async (req, res) => {
   // More specific: only trigger for shopping/product requests, not style advice
   const shoppingRequest = /(recommend|suggest|where can i|where to|show me|can you|help me|looking for|need|want|get|buy|find|links|purchase|shop|order|check out|see options|product|item)/i.test(message);
   
-  // Check if user is saying they don't have something (potential buying opportunity)
-  const missingItem = /(don't have|don't own|don't got|need to get|need to buy|should get|should buy|want to get|want to buy)/i.test(message);
-  
   // Only trigger product search when asking about clothing/outfits AND asking for shopping links
-  // OR when user mentions not having something (Jules can offer to help them buy it)
-  const isProductRequest = (clothingOutfitRequest && shoppingRequest) || (clothingOutfitRequest && missingItem);
+  const isProductRequest = clothingOutfitRequest && shoppingRequest;
   
   console.log('DEBUG: clothingOutfitRequest:', clothingOutfitRequest);
   console.log('DEBUG: shoppingRequest:', shoppingRequest);
-  console.log('DEBUG: missingItem:', missingItem);
   console.log('DEBUG: isProductRequest:', isProductRequest);
   
   // Detect if the user is asking for links to products
@@ -231,12 +226,7 @@ Avoid influencer-core trends or loud, try-hard pieces
 Break down the outfit casually — not like a checklist or magazine editor
 Never describe the outfit's "vibe" — just say what looks good, clearly
 
-WHEN USER MENTIONS NOT HAVING SOMETHING:
-If they say they don't have a specific item you recommended, ask if they want to buy it. Be casual about it. Examples:
-- "Don't have a linen shirt? Want me to find you one?"
-- "No bomber jacket? Should we get you one?"
-- "Missing those shoes? Want me to show you some options?"
-Only offer to help them buy if they mention not having something specific. Don't push it.
+
 
 START OF ANY NEW CONVERSATION:
 Jules gives a quick, personal intro — something like:
