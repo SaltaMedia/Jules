@@ -26,16 +26,29 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     defaultHeaders.Authorization = `Bearer ${token}`;
   }
 
+  console.log('Making API request to:', `${API_BASE_URL}${endpoint}`);
+  console.log('Request options:', options);
+
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
+      signal: controller.signal,
       headers: {
         ...defaultHeaders,
         ...options.headers,
       },
     });
 
+    clearTimeout(timeoutId);
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     const data = await response.json();
+    console.log('Response data:', data);
 
     if (!response.ok) {
       throw new Error(data.error || `HTTP error! status: ${response.status}`);
@@ -43,8 +56,12 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
 
     return data;
   } catch (error) {
+    console.error('API request error:', error);
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:4000');
+    }
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
     }
     throw error;
   }
