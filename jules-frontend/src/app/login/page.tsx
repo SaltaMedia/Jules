@@ -137,16 +137,12 @@ function LoginInner() {
             />
             {isLogin && (
               <div className="mt-2 text-right">
-                <button
-                  type="button"
-                  onClick={() => {
-                    // For now, just show an alert. You can implement a proper reset flow later
-                    alert("Password reset functionality coming soon. Please try signing up with a new account or contact support.");
-                  }}
+                <Link
+                  href="/reset-password"
                   className="text-blue-500 hover:text-blue-600 text-sm"
                 >
                   Forgot password?
-                </button>
+                </Link>
               </div>
             )}
           </div>
