@@ -22,162 +22,64 @@ function detectGenderContext(message) {
 
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish friend who helps ${userGender === 'male' ? 'MEN' : 'WOMEN'} with dating, style, and life advice. You're like a cool older ${userGender === 'male' ? 'sister' : 'brother'} who tells it like it is.
+  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.
 
-CRITICAL RULES - NEVER BREAK THESE:
-- ALWAYS assume you're talking to a ${userGender === 'male' ? 'MAN' : 'WOMAN'} - never give ${userGender === 'male' ? 'women' : 'men'}'s fashion advice
-- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} or ${userGender === 'male' ? 'women' : 'men'}'s fashion items
-- NEVER end responses with "what's on your mind next?" or "I'm here to chat" or "let me know how I can help" or "feel free to ask" or any variation
-- NEVER say "I'm here to help" or "I'm here for you" or similar phrases
-- NEVER ask "anything else?" or "any other questions?" or similar
-- NEVER use motivational closers like "You got this!" or "Stay confident!"
-- NEVER use terms of endearment like "honey", "sweetie", "dear"
-- NEVER explain your response format or why you structure things a certain way
-- NEVER use numbered lists (1. 2. 3.) or bullet points (- * •) for general advice or conversation
-- NEVER use structured formats for general conversation
-- NEVER use dashes, asterisks, or any list formatting for general advice
-- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing items like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} etc.
+You speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.
 
-PERSONALITY:
-- Confident and direct - you have strong opinions and share them
-- Empathetic friend first - you care about people and their struggles
-- Natural conversationalist - you talk like a real person, not an AI
-- Flirty and playful - you can be a little flirty but not over-the-top
-- Gives a ${userGender === 'male' ? 'woman' : 'man'}'s perspective on dating, style, and life FOR ${userGender === 'male' ? 'MEN' : 'WOMEN'}
-- Asks follow-up questions to get context and understand better
-- Makes specific, actionable suggestions - not generic advice
+Your tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.
 
-HOW YOU TALK:
-- Use contractions: "you're", "I'm", "don't", "can't", "won't"
-- Be casual and natural: "yeah", "okay", "cool", "ugh", "honestly"
-- Give your opinion: "I think...", "honestly...", "personally..."
-- Ask questions: "What kind of...?", "Have you tried...?", "What's your...?"
-- Be specific: "Try this class at...", "Go to this bar on...", "Wear this with..."
-- Give advice naturally in conversation, not as a presentation
-- Write in flowing, conversational paragraphs that feel natural
-- ONLY use bullet points with asterisks and bold formatting when giving specific outfit suggestions, like: "- **Outfit:** Go for dress pants..."
+SHOPPING & PRODUCTS:
+- You CAN provide product links and shopping recommendations
+- When someone asks for links or examples, say "Sure, here you go" or similar
+- Be honest about your capabilities - you can show products and links
+- Don't say you can't provide links when you actually can
+- If you mention specific products, be prepared to show links for them
 
-WHAT YOU DO:
-- Suggest specific places, classes, events, ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S outfits
-- Search for current, relevant information when needed
-- Recommend ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S products that match what you're suggesting
-- Ask follow-up questions to understand context
-- Give practical, actionable advice in natural conversation
-- Write in flowing paragraphs that feel like natural conversation
-- ALWAYS give ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S fashion advice - ${userGender === 'male' ? 'suits, blazers, shirts, pants, shoes' : 'dresses, skirts, blouses, pants, shoes'} etc.
-- ONLY use bullet points with bold categories when giving specific outfit suggestions
+RULES — HARD ENFORCEMENT:
 
-WHAT YOU DON'T DO:
-- Use AI language like "circuits", "algorithms", "processing"
-- Use motivational closers like "You got this!" or "Stay confident!"
-- Use terms of endearment like "honey", "sweetie", "dear"
-- Tell people to "look things up" - give them specific suggestions
-- Recommend ${userGender === 'male' ? 'women' : 'men'}'s products or ${userGender === 'male' ? 'women' : 'men'}
-- Use formal or academic language
-- End responses with phrases like "what's on your mind next?" or "I'm here to chat" or "let me know how I can help"
-- Explain why you use certain formats or structures
-- Use numbered lists or bullet points for general advice or conversation
-- Use structured formats for anything other than specific outfit suggestions
-- Use dashes, asterisks, or any list formatting for general conversation
+DO NOT EVER USE:
+- Emojis
+- Blog-style structure or headings (unless breaking down an outfit)
+- Phrases like "this look gives off," "this says…," "effortlessly cool," "effortlessly stylish," "effortlessly confident"
+- Motivational language like "confidence is key," "you got this," "rock that date," "crush it"
+- AI-speak like "I'm here to help," "let me know if you need anything," "hope this helps"
+- Lists with bullet points or numbers (unless specifically asked)
+- Overly verbose explanations
 
-EXAMPLES:
-Good: "Ah, a wedding weekend! So exciting! To make sure you're dressed to the nines, here's a timeless and stylish outfit suggestion:
-- **Outfit:** Go for dress pants in a classic color like navy or charcoal paired with a crisp white dress shirt.
-- **Blazer:** A well-fitted blazer in a complementary color such as navy or light gray will add a touch of sophistication to your look.
-- **Footwear:** Opt for oxfords or brogues in a matching color to complete your polished ensemble.
-- **Accessories:** Add a tie in a subtle pattern or solid color to bring the outfit together. A classic watch and a coordinating belt are a must for that polished finish.
-- **Finishing Touch:** Consider adding a pocket square for a pop of color and extra style.
-This outfit strikes a great balance between formal and comfortable for a wedding. How does this outfit suggestion sound to you? If you have any specific preferences or details about the wedding, feel free to share for a more personalized recommendation!"
+YOUR PERSONALITY:
+- Direct and honest, but caring
+- Flirty but not creepy
+- Confident and stylish
+- Speak like a friend who knows what they're talking about
+- Keep responses concise and punchy
+- Be observational and specific
+- Show personality and attitude
 
-Good: "Ugh, getting ghosted sucks. Honestly, it's probably not about you - some people just suck at communication. Give it a day or two, then send one casual follow-up. If they don't respond, move on. You deserve better anyway."
+RESPONSE STYLE:
+- Answer questions directly
+- Give specific, actionable advice
+- Be conversational and natural
+- Show your personality through your tone
+- Keep it real and relatable
+- No motivational closers or AI-speak endings
 
-Good: "What kind of vibe are you going for? And what's your budget? That'll help me suggest the right stuff."
-
-Remember: You're a friend having a conversation, not an AI assistant giving a presentation. Write in natural, flowing paragraphs. Give advice naturally in conversation. ONLY use bullet points with bold formatting when giving specific outfit suggestions.`;
-
+Remember: You're Jules, not ChatGPT. Be yourself.`;
+  
   return basePrompt;
 }
 
-// Strip only specific closers at the end of the text, preserve natural tone
+// Strip only the most obvious AI closers at the very end
 function stripClosers(text) {
   if (!text) return text;
-  
-  let result = text;
-  
-  // Only remove specific closers at the very end of the text
-  const endCloserPatterns = [
-    /(?:Let me know if.*?)$/i,
-    /(?:Hope (that|this) helps.*?)$/i,
-    /(?:You\'?re all set.*?)$/i,
-    /(?:Keep bringing the style questions.*?)$/i,
-    /(?:I\'?ll keep dishing out the style solutions.*?)$/i,
-    /(?:Rock it with confidence.*?)$/i,
-    /(?:effortlessly cool.*?)$/i,
-    /(?:level up your style game.*?)$/i,
-    /(?:my friend[.!?])$/i,
-    /(?:Just say the word.*?)$/i,
-    /(?:I\'?ve got you covered.*?)$/i,
-    /(?:Keep bringing.*?questions.*?I\'?ll.*?solutions.*?)$/i,
-    /(?:Let\'?s do this.*?)$/i,
-    /(?:Treat yourself to a pair.*?)$/i,
-    /(?:up your workout game.*?)$/i,
-    /(?:Keep.*?coming.*?I\'?ll.*?keep.*?dishing.*?out.*?solutions.*?)$/i,
-    /(?:If you need more.*?Just ask.*?)$/i,
-    /(?:I\'?m always here.*?)$/i,
-    /(?:Let\'?s keep.*?going.*?)$/i,
-    /(?:You got this.*?)$/i,
-    /(?:Showtime baby.*?)$/i,
-    /(?:charisma is irresistible.*?)$/i,
-    /(?:I\'?m just a message away.*?)$/i,
-    /(?:I\'?m here whenever you need.*?)$/i,
-    /(?:Let\'?s keep the style rolling.*?)$/i,
-    /(?:I\'?m always ready to help.*?)$/i,
-    /(?:Ready to help you.*?)$/i,
-    /(?:Just say the word.*?)$/i,
-    /(?:I\'?m here to help.*?)$/i,
-    /(?:Let\'?s dial up your cool factor.*?)$/i,
-    /(?:what\'?s on your mind next.*?)$/i,
-    /(?:I\'?m here to chat.*?)$/i,
-    /(?:let me know how I can help.*?)$/i,
-    /(?:feel free to let me know.*?)$/i,
-    /(?:just let me know.*?)$/i,
-    /(?:so what\'?s on your mind.*?)$/i,
-    /(?:what\'?s next.*?)$/i,
-    /(?:anything else.*?)$/i,
-    /(?:need anything else.*?)$/i,
-    /(?:want anything else.*?)$/i,
-    /(?:can I help with anything else.*?)$/i,
-    /(?:any other questions.*?)$/i,
-    /(?:other questions.*?)$/i,
-    /(?:more questions.*?)$/i,
-    /(?:any more questions.*?)$/i,
-    /(?:got any other questions.*?)$/i,
-    /(?:have any other questions.*?)$/i,
-    /(?:any other style questions.*?)$/i,
-    /(?:other style questions.*?)$/i,
-    /(?:more style questions.*?)$/i,
-    /(?:any more style questions.*?)$/i,
-    /(?:got any other style questions.*?)$/i,
-    /(?:have any other style questions.*?)$/i
-  ];
-  
-  // Only apply patterns that match at the end of the text
-  endCloserPatterns.forEach(pattern => {
-    if (pattern.test(result)) {
-      result = result.replace(pattern, '').trim();
-    }
-  });
-  
-  // Clean up extra whitespace
-  result = result.replace(/\n\s*\n/g, '\n'); // Remove extra line breaks
-  result = result.replace(/\s+/g, ' '); // Normalize whitespace
-  result = result.trim();
-  
-  return result;
+  // Only remove the most obvious AI closers at the very end
+  return text.replace(/(?:You\'re all set\.?|You got this\.?|Rock it with confidence\.?|Need more tips\?|Let me know if\.?|Just ask\.?|Just let me know\.?|Just shoot\.?|Just hit me up\.?|Let\'s chat\.?|Rock that date\.?|Nailed it\.?|You\'re good to go\.?|Ready to impress\.?|Hope that helps\.?|I\'m here to help\.?|\s*)$/i, '').trim();
 }
 
 // Strip numbered lists and convert to natural paragraphs
 // Removed stripLists function - it was causing truncation issues
+
+// Helper to detect if a message is a new product/brand request
+// Removed isNewProductBrandRequest function - was causing context reset issues
 
 // Handle chat requests
 exports.handleChat = async (req, res) => {
@@ -216,6 +118,26 @@ exports.handleChat = async (req, res) => {
   const userGender = (user.preferences && user.preferences.gender) || 'male';
   console.log(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
   
+  // Only redirect if it's clearly a woman asking for women's advice
+  const womenKeywords = /(women|woman|girl|girls|female|ladies|lady|she|her|hers|women's|woman's|girl's|girls'|female's|ladies'|lady's)/i;
+  const womenClothingKeywords = /(dress|dresses|gown|gowns|skirt|skirts|heels|heels|pumps|stilettos|blouse|blouses|bra|bras|panties|lingerie|makeup|cosmetics|purse|handbag|clutch|jewelry|necklace|earrings|ring|rings|bracelet|bracelets)/i;
+  
+  // Only redirect if it's clearly a woman asking for women's advice, not just mentioning women
+  const isWomanAskingForWomensAdvice = (womenKeywords.test(message) || womenClothingKeywords.test(message)) && 
+    /(i am|i'm|me|my|myself|for me|about me|help me|advice for|tips for|what should i|how do i)/i.test(message);
+  
+  if (isWomanAskingForWomensAdvice) {
+    // Save the redirect message to conversation and return it
+    let conversation = await Conversation.findOne({ userId });
+    if (!conversation) {
+      conversation = new Conversation({ userId, messages: [] });
+    }
+    conversation.messages.push({ role: 'user', content: message });
+    conversation.messages.push({ role: 'assistant', content: "Hey! I'm Jules and I focus on helping guys with their style and dating game. What can I help you with for your own style or dating life?" });
+    await conversation.save();
+    return res.json({ reply: "Hey! I'm Jules and I focus on helping guys with their style and dating game. What can I help you with for your own style or dating life?", products: [] });
+  }
+  
   // Very specific regex for actual image/visual requests only
   // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
   // But NOT: show me links, show me products, etc.
@@ -242,57 +164,74 @@ exports.handleChat = async (req, res) => {
     return res.json({ reply: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance.", products: [] });
   }
 
+  // Get conversation context FIRST for product detection
+  let conversation = await Conversation.findOne({ userId });
+  const recentMessages = conversation ? conversation.messages.slice(-5) : [];
+  const conversationContext = recentMessages.map(m => m.content).join(' ').toLowerCase();
+  const hasClothingContext = /(jeans|shirt|pants|shoes|jacket|outfit|clothing|style|fashion|dress|wear|casual|formal|date|dating)/i.test(conversationContext);
+  
+  // Check if user is echoing Jules's last response (prevent echo loop)
+  if (conversation && conversation.messages.length > 0) {
+    const lastAssistantMessage = conversation.messages.slice().reverse().find(m => m.role === 'assistant');
+    if (lastAssistantMessage) {
+      // More robust echo detection - check if message is very similar to Jules's last response
+      const lastResponse = lastAssistantMessage.content.trim();
+      const currentMessage = message.trim();
+      
+      // Check for exact match or if current message contains most of Jules's response
+      if (currentMessage === lastResponse || 
+          (currentMessage.length > 50 && lastResponse.includes(currentMessage)) ||
+          (lastResponse.length > 50 && currentMessage.includes(lastResponse))) {
+        // User is echoing Jules's response - give a clarifying response
+        conversation.messages.push({ role: 'user', content: message });
+        conversation.messages.push({ role: 'assistant', content: "I see you're referencing what I just said. Is there something specific about that you'd like me to clarify or expand on?" });
+        await conversation.save();
+        return res.json({ reply: "I see you're referencing what I just said. Is there something specific about that you'd like me to clarify or expand on?", products: [] });
+      }
+    }
+  }
+  
   // More specific product detection - only trigger for explicit shopping requests
   const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i.test(message);
   
   // Very specific shopping triggers - only when explicitly asking for products/links
-  const askingForRecommendations = /(show\\s*me|can\\s*you\\s*show|help\\s*me\\s*find|looking\\s*for|need|want|get|buy|find|where\\s*can\\s*i|recommend|suggest|examples?|options?|links?|any\\s*examples?|got\\s*examples?)/i.test(message);
+  const askingForRecommendations = /(show\s*me|can\s*you\s*show|help\s*me\s*find|looking\s*for|need|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message);
   
-  // Only trigger product search when asking about clothing/outfits AND asking for shopping links
-  const isProductRequest = clothingOutfitRequest && askingForRecommendations;
+  // Trigger product search when asking for recommendations AND either:
+  // 1. Current message mentions clothing, OR
+  // 2. Recent conversation context is about clothing
+  const isProductRequest = askingForRecommendations && (clothingOutfitRequest || hasClothingContext);
   
   // Check if user is asking for links to products Jules just mentioned
   const isLinkRequest = /(links?|examples?|show\\s*me|can\\s*you\\s*show|where\\s*can\\s*i|any\\s*examples?|got\\s*examples?)/i.test(message) && !isProductRequest;
   
   console.log('DEBUG: clothingOutfitRequest:', clothingOutfitRequest);
   console.log('DEBUG: askingForRecommendations:', askingForRecommendations);
+  console.log('DEBUG: hasClothingContext:', hasClothingContext);
   console.log('DEBUG: isProductRequest:', isProductRequest);
   console.log('DEBUG: isLinkRequest:', isLinkRequest);
   
   try {
-    let conversation = await Conversation.findOne({ userId });
+    // Use existing conversation or create new one
     if (!conversation) {
       conversation = new Conversation({ userId, messages: [] });
     }
     conversation.messages.push({ role: 'user', content: message });
     const recentMessages = conversation.messages.slice(-10);
     
+    // Update recentMessages for product search to include the current message
+    const messagesForProductSearch = conversation.messages.slice(-3); // Only last 3 messages for more recent context
+    
     // Jules's authentic personality - using gender-specific context
-    const messages = [
-      { role: 'system', content: getSystemPrompt(userGender) },
+    let messages = [
+      { role: 'system', content: getSystemPrompt('male') }, // Always use male context for Jules
       ...recentMessages
     ];
     
-    // Dynamic token management based on conversation context
-    let maxTokens;
-    const messageCount = messages.length;
-    const isAdviceQuestion = /(ghost|date|relationship|breakup|text|message|call|ignore|respond|feel|hurt|confused|frustrated|angry|sad|upset|anxious|nervous|worried|stressed|overthink|doubt|trust|love|like|crush|feelings|emotion)/i.test(message);
-    const isProductRequestType = /(show|find|recommend|suggest|buy|shop|product|clothing|outfit|shoes|shirt|pants|jacket)/i.test(message);
-    const isSimpleQuestion = /(hi|hello|hey|thanks|thank you|bye|goodbye|yes|no|ok|okay)/i.test(message);
+    // Set a high token limit to prevent truncation
+    const maxTokens = 4000;
     
-    if (isSimpleQuestion) {
-      maxTokens = 1500; // Increased for simple interactions
-    } else if (isAdviceQuestion) {
-      maxTokens = 3000; // Reduced for complex advice to stay within limits
-    } else if (isProductRequestType) {
-      maxTokens = 2000; // Reduced for product recommendations
-    } else if (messageCount > 10) {
-      maxTokens = 3000; // Reduced for deep conversations
-    } else {
-      maxTokens = 2000; // Reduced for general conversation
-    }
-    
-    console.log(`DEBUG: Context-aware token limit - Message count: ${messageCount}, Type: ${isAdviceQuestion ? 'advice' : isProductRequestType ? 'product' : isSimpleQuestion ? 'simple' : 'general'}, Max tokens: ${maxTokens}`);
+    console.log(`DEBUG: Using full conversation context - Message count: ${messages.length}, Max tokens: ${maxTokens}`);
     
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
@@ -338,15 +277,57 @@ exports.handleChat = async (req, res) => {
         const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
         const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
         
+        // Check conversation context for clothing-related topics when generating search query
+        let contextSearchQuery = '';
+        if (hasClothingContext && messagesForProductSearch.length > 0) {
+          // Look for clothing keywords in recent conversation, prioritizing the most recent mentions
+          const recentText = messagesForProductSearch.map(m => m.content).join(' '); // Only last 3 messages for more recent context
+          
+          // Prioritize the current message for brand/product detection
+          const currentMessageLower = message.toLowerCase();
+          const contextProductMatch = currentMessageLower.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
+          const contextBrandMatch = currentMessageLower.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+          
+          // If current message has specific product/brand, use that
+          if (contextProductMatch || contextBrandMatch) {
+            if (contextBrandMatch && contextProductMatch) {
+              contextSearchQuery = `${contextBrandMatch[0]} men's ${contextProductMatch[0]} buy shop`;
+            } else if (contextBrandMatch) {
+              contextSearchQuery = `${contextBrandMatch[0]} men's clothing buy shop`;
+            } else if (contextProductMatch) {
+              contextSearchQuery = `men's ${contextProductMatch[0]} buy shop`;
+            }
+          } else {
+            // Fall back to recent conversation context
+            const contextProductMatch = recentText.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
+            const contextBrandMatch = recentText.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+            
+            if (contextProductMatch) {
+              if (contextBrandMatch) {
+                contextSearchQuery = `${contextBrandMatch[0]} men's ${contextProductMatch[0]} buy shop`;
+              } else {
+                contextSearchQuery = `men's ${contextProductMatch[0]} buy shop`;
+              }
+            }
+          }
+        }
+        
         if (brandMatch && productMatch) {
           searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
+          console.log('DEBUG: Using specific brand + product search:', searchQuery);
         } else if (brandMatch) {
           searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+          console.log('DEBUG: Using brand-only search:', searchQuery);
         } else if (productMatch) {
           searchQuery = `men's ${productMatch[0]} buy shop`;
+          console.log('DEBUG: Using product-only search:', searchQuery);
+        } else if (contextSearchQuery) {
+          searchQuery = contextSearchQuery;
+          console.log('DEBUG: Using context-based search:', searchQuery);
         } else {
           // Use the original message with "men's" prefix for better results
           searchQuery = `men's ${message} buy shop`;
+          console.log('DEBUG: Using generic search:', searchQuery);
         }
         
         console.log('DEBUG: Generated search query:', searchQuery);
@@ -378,6 +359,7 @@ exports.handleChat = async (req, res) => {
         
         if (searchProducts.length > 0) {
           console.log('DEBUG: Found products:', searchProducts.length);
+          console.log('DEBUG: Products array:', JSON.stringify(searchProducts, null, 2));
           products = searchProducts;
         } else {
           console.log('DEBUG: No products found in search results');
@@ -470,14 +452,28 @@ exports.handleChat = async (req, res) => {
       }
     }
     
-    const finalReply = cleanedReply.trim();
+    let finalReply = cleanedReply.trim();
     console.log('DEBUG: Backend final reply length:', finalReply.length);
     console.log('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
     console.log('DEBUG: Backend sending response to frontend');
     
+    // Ensure we have a valid reply before saving
+    if (!finalReply || finalReply.trim() === '' || finalReply.length < 10) {
+      console.log('DEBUG: Empty or too short reply detected, using fallback');
+      finalReply = "I'm here to help with your style and dating questions. What's on your mind?";
+    }
+    
+    // Additional validation to prevent very short responses
+    if (finalReply.length < 20) {
+      console.log('DEBUG: Reply too short, using fallback');
+      finalReply = "I'm here to help with your style and dating questions. What's on your mind?";
+    }
+    
     conversation.messages.push({ role: 'assistant', content: finalReply });
     
     console.log('DEBUG: About to send JSON response');
+    console.log('DEBUG: Final products array length:', products.length);
+    console.log('DEBUG: Final products array:', JSON.stringify(products, null, 2));
     res.json({ reply: finalReply, products });
     console.log('DEBUG: JSON response sent successfully');
     
