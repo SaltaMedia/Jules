@@ -54,14 +54,23 @@ function safeString(val?: string): string {
 }
 
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "Hi! Good to meet you. Before we get started, tell me about yourself.",
-      sender: "jules",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize messages after component mounts to avoid hydration issues
+  useEffect(() => {
+    if (!isInitialized) {
+      setMessages([
+        {
+          id: "1",
+          text: "Hi! Good to meet you. Before we get started, tell me about yourself.",
+          sender: "jules",
+          timestamp: new Date(),
+        },
+      ]);
+      setIsInitialized(true);
+    }
+  }, [isInitialized]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -196,9 +205,21 @@ export default function Chat() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      let errorText = "Sorry, I'm having trouble connecting right now. Please try again!";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('fetch')) {
+          errorText = "Cannot connect to server. Please check your connection and try again.";
+        } else if (error.message.includes('CORS')) {
+          errorText = "Connection blocked. Please try again or contact support.";
+        } else {
+          errorText = `Error: ${error.message}`;
+        }
+      }
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Sorry, I'm having trouble connecting right now. Please try again!",
+        text: errorText,
         sender: "jules",
         timestamp: new Date(),
       };

@@ -1,4 +1,10 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:4000' : 'https://jules-bsnr.onrender.com');
+// Force production API URL for now to ensure it works
+const API_BASE_URL = 'https://jules-bsnr.onrender.com';
+
+// Debug logging
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
 
 // Helper function to get auth token
 const getAuthToken = () => {
