@@ -43,7 +43,7 @@ app.use(express.json());
 // Configure CORS for production
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://juleslab.com', 'https://www.juleslab.com', 'https://jules-frontend.vercel.app']
+    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-rosy.vercel.app']
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   optionsSuccessStatus: 200
