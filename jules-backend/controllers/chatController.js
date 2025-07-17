@@ -130,11 +130,20 @@ exports.handleChat = async (req, res) => {
   const detectedGender = detectGenderContext(message);
   
   // Get or create user and update gender preference if detected
-  let user = await User.findById(userId);
-  if (!user) {
-    // For anonymous users, don't create a User record - just use a default gender preference
-    // The User model requires an email, so we can't create anonymous users
-    user = { preferences: { gender: 'male' } };
+  let user = { preferences: { gender: 'male' } }; // Default for anonymous users
+  
+  // Only try to find user if userId is a valid ObjectId
+  if (userId && userId !== 'test123' && mongoose.Types.ObjectId.isValid(userId)) {
+    try {
+      user = await User.findById(userId);
+      if (!user) {
+        // User not found, use default
+        user = { preferences: { gender: 'male' } };
+      }
+    } catch (error) {
+      console.log('DEBUG: Error finding user, using default:', error.message);
+      user = { preferences: { gender: 'male' } };
+    }
   }
   
   // Update gender preference if detected in current message
