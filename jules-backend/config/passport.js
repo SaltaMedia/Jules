@@ -25,6 +25,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     }
     return done(null, user);
   } catch (err) {
+    console.error('Passport Google Strategy error:', err);
     return done(err, null);
   }
   }));
@@ -37,9 +38,16 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
+    // Check if id is a valid MongoDB ObjectId
+    const mongoose = require('mongoose');
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      console.log('DEBUG: Invalid ObjectId in deserializeUser:', id);
+      return done(null, null);
+    }
     const user = await User.findById(id);
     done(null, user);
   } catch (err) {
-    done(err, null);
+    console.error('Passport deserializeUser error:', err);
+    done(null, null); // Return null instead of error to prevent crashes
   }
 }); 

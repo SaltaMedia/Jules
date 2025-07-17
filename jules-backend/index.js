@@ -1,3 +1,6 @@
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
 console.log('Starting server...');
 require('dotenv').config();
 console.log('dotenv loaded');
@@ -54,9 +57,10 @@ app.use('/api/products', productsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use(session({ secret: 'jules_secret', resave: false, saveUninitialized: false }));
-app.use(passport.initialize());
-app.use(passport.session());
+// Only apply session middleware to routes that need authentication
+app.use('/api/auth', session({ secret: 'jules_secret', resave: false, saveUninitialized: false }));
+app.use('/api/auth', passport.initialize());
+app.use('/api/auth', passport.session());
 
 // Google OAuth routes (only if configured)
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -93,6 +97,13 @@ app.get('/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
+  
+  // Handle Mongoose CastError specifically
+  if (err.name === 'CastError' && err.kind === 'ObjectId') {
+    console.log('DEBUG: Caught CastError for invalid ObjectId:', err.value);
+    return res.status(400).json({ error: 'Invalid ID format' });
+  }
+  
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -101,12 +112,13 @@ const PORT = process.env.PORT || 4000;
 console.log('About to connect to MongoDB...');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
 // Connect to MongoDB Atlas
 console.log('Calling mongoose.connect...');
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI)
 .then(() => {
   console.log('Connected to MongoDB Atlas');
   console.log('About to start server...');

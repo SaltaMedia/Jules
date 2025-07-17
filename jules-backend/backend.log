@@ -1,0 +1,59 @@
+Starting server...
+[dotenv@17.0.0] injecting env (12) from .env – 🔐 encrypt with dotenvx: https://dotenvx.com
+dotenv loaded
+express loaded
+mongoose loaded
+cors loaded
+app created
+Loading routes...
+[dotenv@17.0.0] injecting env (12) from .env – 🔐 encrypt with dotenvx: https://dotenvx.com
+chatRoutes loaded
+authRoutes loaded
+profileRoutes loaded
+uploadRoutes loaded
+productsRoutes loaded
+adminRoutes loaded
+session loaded
+passport loaded
+Loading passport config...
+passport config loaded
+About to connect to MongoDB...
+MONGODB_URI: mongodb+srv://spsalta:Q4eqe34UHGRz7ZaT@juleslabs.mtrgoxc.mongodb.net/?retryWrites=true&w=majority&appName=JulesLabs
+Calling mongoose.connect...
+(node:37604) [MONGODB DRIVER] Warning: useNewUrlParser is a deprecated option: useNewUrlParser has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37604) [MONGODB DRIVER] Warning: useUnifiedTopology is a deprecated option: useUnifiedTopology has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+Connected to MongoDB Atlas
+About to start server...
+Server running on port 4000
+Server startup complete
+DEBUG: handleChat called. Incoming message: what should I wear to a wedding this weekend? userId: test123
+Error: CastError: Cast to ObjectId failed for value "test123" (type string) at path "_id" for model "User"
+    at SchemaObjectId.cast (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/schema/objectId.js:251:11)
+    at SchemaType.applySetters (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/schemaType.js:1255:12)
+    at SchemaType.castForQuery (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/schemaType.js:1673:17)
+    at cast (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/cast.js:390:32)
+    at Query.cast (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:5055:12)
+    at Query._castConditions (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:2351:10)
+    at model.Query._findOne (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:2674:8)
+    at model.Query.exec (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:4604:80)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async exports.handleChat (/Users/stevesalta/Jules/jules-backend/controllers/chatController.js:193:14) {
+  stringValue: '"test123"',
+  messageFormat: undefined,
+  kind: 'ObjectId',
+  value: 'test123',
+  path: '_id',
+  reason: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+      at new ObjectId (/Users/stevesalta/Jules/jules-backend/node_modules/bson/lib/bson.cjs:2538:23)
+      at castObjectId (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/cast/objectid.js:25:12)
+      at SchemaObjectId.cast (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/schema/objectId.js:249:12)
+      at SchemaType.applySetters (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/schemaType.js:1255:12)
+      at SchemaType.castForQuery (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/schemaType.js:1673:17)
+      at cast (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/cast.js:390:32)
+      at Query.cast (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:5055:12)
+      at Query._castConditions (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:2351:10)
+      at model.Query._findOne (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:2674:8)
+      at model.Query.exec (/Users/stevesalta/Jules/jules-backend/node_modules/mongoose/lib/query.js:4604:80),
+  valueType: 'string'
+}

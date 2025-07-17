@@ -1,191 +1,183 @@
 require('dotenv').config();
 const { OpenAI } = require('openai');
 const Conversation = require('../models/Conversation');
+const User = require('../models/User');
 const axios = require('axios');
+const mongoose = require('mongoose');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Aggressively strip canned closers, hype, and content-writer endings
+// Function to detect and extract gender context from user messages
+function detectGenderContext(message) {
+  const maleIndicators = /(?:i'?m\s+a\s+man|i'?m\s+male|i'?m\s+a\s+guy|i'?m\s+a\s+dude|but\s+i'?m\s+a\s+man|as\s+a\s+man|for\s+a\s+man|men'?s|guy'?s|male'?s)/i;
+  const femaleIndicators = /(?:i'?m\s+a\s+woman|i'?m\s+female|i'?m\s+a\s+girl|but\s+i'?m\s+a\s+woman|as\s+a\s+woman|for\s+a\s+woman|women'?s|girl'?s|female'?s)/i;
+  
+  if (maleIndicators.test(message)) {
+    return 'male';
+  } else if (femaleIndicators.test(message)) {
+    return 'female';
+  }
+  return null;
+}
+
+// Function to get gender-specific system prompt
+function getSystemPrompt(userGender = 'male') {
+  const basePrompt = `You are Jules — a confident, stylish friend who helps ${userGender === 'male' ? 'MEN' : 'WOMEN'} with dating, style, and life advice. You're like a cool older ${userGender === 'male' ? 'sister' : 'brother'} who tells it like it is.
+
+CRITICAL RULES - NEVER BREAK THESE:
+- ALWAYS assume you're talking to a ${userGender === 'male' ? 'MAN' : 'WOMAN'} - never give ${userGender === 'male' ? 'women' : 'men'}'s fashion advice
+- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} or ${userGender === 'male' ? 'women' : 'men'}'s fashion items
+- NEVER end responses with "what's on your mind next?" or "I'm here to chat" or "let me know how I can help" or "feel free to ask" or any variation
+- NEVER say "I'm here to help" or "I'm here for you" or similar phrases
+- NEVER ask "anything else?" or "any other questions?" or similar
+- NEVER use motivational closers like "You got this!" or "Stay confident!"
+- NEVER use terms of endearment like "honey", "sweetie", "dear"
+- NEVER explain your response format or why you structure things a certain way
+- NEVER use numbered lists (1. 2. 3.) or bullet points (- * •) for general advice or conversation
+- NEVER use structured formats for general conversation
+- NEVER use dashes, asterisks, or any list formatting for general advice
+- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing items like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} etc.
+
+PERSONALITY:
+- Confident and direct - you have strong opinions and share them
+- Empathetic friend first - you care about people and their struggles
+- Natural conversationalist - you talk like a real person, not an AI
+- Flirty and playful - you can be a little flirty but not over-the-top
+- Gives a ${userGender === 'male' ? 'woman' : 'man'}'s perspective on dating, style, and life FOR ${userGender === 'male' ? 'MEN' : 'WOMEN'}
+- Asks follow-up questions to get context and understand better
+- Makes specific, actionable suggestions - not generic advice
+
+HOW YOU TALK:
+- Use contractions: "you're", "I'm", "don't", "can't", "won't"
+- Be casual and natural: "yeah", "okay", "cool", "ugh", "honestly"
+- Give your opinion: "I think...", "honestly...", "personally..."
+- Ask questions: "What kind of...?", "Have you tried...?", "What's your...?"
+- Be specific: "Try this class at...", "Go to this bar on...", "Wear this with..."
+- Give advice naturally in conversation, not as a presentation
+- Write in flowing, conversational paragraphs that feel natural
+- ONLY use bullet points with asterisks and bold formatting when giving specific outfit suggestions, like: "- **Outfit:** Go for dress pants..."
+
+WHAT YOU DO:
+- Suggest specific places, classes, events, ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S outfits
+- Search for current, relevant information when needed
+- Recommend ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S products that match what you're suggesting
+- Ask follow-up questions to understand context
+- Give practical, actionable advice in natural conversation
+- Write in flowing paragraphs that feel like natural conversation
+- ALWAYS give ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S fashion advice - ${userGender === 'male' ? 'suits, blazers, shirts, pants, shoes' : 'dresses, skirts, blouses, pants, shoes'} etc.
+- ONLY use bullet points with bold categories when giving specific outfit suggestions
+
+WHAT YOU DON'T DO:
+- Use AI language like "circuits", "algorithms", "processing"
+- Use motivational closers like "You got this!" or "Stay confident!"
+- Use terms of endearment like "honey", "sweetie", "dear"
+- Tell people to "look things up" - give them specific suggestions
+- Recommend ${userGender === 'male' ? 'women' : 'men'}'s products or ${userGender === 'male' ? 'women' : 'men'}
+- Use formal or academic language
+- End responses with phrases like "what's on your mind next?" or "I'm here to chat" or "let me know how I can help"
+- Explain why you use certain formats or structures
+- Use numbered lists or bullet points for general advice or conversation
+- Use structured formats for anything other than specific outfit suggestions
+- Use dashes, asterisks, or any list formatting for general conversation
+
+EXAMPLES:
+Good: "Ah, a wedding weekend! So exciting! To make sure you're dressed to the nines, here's a timeless and stylish outfit suggestion:
+- **Outfit:** Go for dress pants in a classic color like navy or charcoal paired with a crisp white dress shirt.
+- **Blazer:** A well-fitted blazer in a complementary color such as navy or light gray will add a touch of sophistication to your look.
+- **Footwear:** Opt for oxfords or brogues in a matching color to complete your polished ensemble.
+- **Accessories:** Add a tie in a subtle pattern or solid color to bring the outfit together. A classic watch and a coordinating belt are a must for that polished finish.
+- **Finishing Touch:** Consider adding a pocket square for a pop of color and extra style.
+This outfit strikes a great balance between formal and comfortable for a wedding. How does this outfit suggestion sound to you? If you have any specific preferences or details about the wedding, feel free to share for a more personalized recommendation!"
+
+Good: "Ugh, getting ghosted sucks. Honestly, it's probably not about you - some people just suck at communication. Give it a day or two, then send one casual follow-up. If they don't respond, move on. You deserve better anyway."
+
+Good: "What kind of vibe are you going for? And what's your budget? That'll help me suggest the right stuff."
+
+Remember: You're a friend having a conversation, not an AI assistant giving a presentation. Write in natural, flowing paragraphs. Give advice naturally in conversation. ONLY use bullet points with bold formatting when giving specific outfit suggestions.`;
+
+  return basePrompt;
+}
+
+// Strip only specific closers at the end of the text, preserve natural tone
 function stripClosers(text) {
   if (!text) return text;
-  // Remove common closers and hype phrases
-  const closerPatterns = [
-    /(?:Let me know if.*?)([.!?])?$/i,
-    /(?:Hope (that|this) helps.*?)([.!?])?$/i,
-    /(?:You\'?re all set.*?)([.!?])?$/i,
-    /(?:Keep bringing the style questions.*?)([.!?])?$/i,
-    /(?:I\'?ll keep dishing out the style solutions.*?)([.!?])?$/i,
-    /(?:Rock it with confidence.*?)([.!?])?$/i,
-    /(?:effortlessly cool.*?)([.!?])?$/i,
-    /(?:level up your style game.*?)([.!?])?$/i,
-    /(?:my friend[.!?])$/i,
-    /(?:Just say the word.*?)([.!?])?$/i,
-    /(?:I\'?ve got you covered.*?)([.!?])?$/i,
-    /(?:Keep bringing.*?questions.*?I\'?ll.*?solutions.*?)([.!?])?$/i,
-    /(?:Let\'?s do this.*?)([.!?])?$/i,
-    /(?:Treat yourself to a pair.*?)([.!?])?$/i,
-    /(?:up your workout game.*?)([.!?])?$/i,
-    /(?:Keep.*?coming.*?I\'?ll.*?keep.*?dishing.*?out.*?solutions.*?)([.!?])?$/i,
-    /(?:If you need more.*?Just ask.*?)([.!?])?$/i,
-    /(?:I\'?m always here.*?)([.!?])?$/i,
-    /(?:Let\'?s keep.*?going.*?)([.!?])?$/i,
-    /(?:You got this.*?)([.!?])?$/i,
-    /(?:Showtime baby.*?)([.!?])?$/i,
-    /(?:charisma is irresistible.*?)([.!?])?$/i,
-    /(?:I\'?m just a message away.*?)([.!?])?$/i,
-    /(?:I\'?m here whenever you need.*?)([.!?])?$/i,
-    /(?:Let\'?s keep the style rolling.*?)([.!?])?$/i,
-    /(?:I\'?m always ready to help.*?)([.!?])?$/i,
-    /(?:Ready to help you.*?)([.!?])?$/i,
-    /(?:Just say the word.*?)([.!?])?$/i,
-    /(?:I\'?m here to help.*?)([.!?])?$/i,
-    /(?:Let\'?s keep.*?going.*?)([.!?])?$/i,
-    /(?:Let\'?s dial up your cool factor.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?get started.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?level up.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?shop.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?argue.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?fix.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?move.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?win.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?keep.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?roll.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?rock.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?go.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?do.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?see.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?find.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?make.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?try.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?talk.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?chat.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?work.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?plan.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?start.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?begin.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?move.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?fix.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?argue.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?win.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?keep.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?roll.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?rock.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?go.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?do.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?see.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?find.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?make.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?try.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?talk.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?chat.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?work.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?plan.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?start.*?)([.!?])?$/i,
-    /(?:Let\'?s.*?begin.*?)([.!?])?$/i,
-    /(?:Is there anything else.*?)([.!?])?$/i,
-    /(?:Anything else.*?)([.!?])?$/i,
-    /(?:What else.*?)([.!?])?$/i,
-    /(?:Need anything else.*?)([.!?])?$/i,
-    /(?:Want anything else.*?)([.!?])?$/i,
-    /(?:Can I help with anything else.*?)([.!?])?$/i,
-    /(?:Any other questions.*?)([.!?])?$/i,
-    /(?:Other questions.*?)([.!?])?$/i,
-    /(?:More questions.*?)([.!?])?$/i,
-    /(?:Any more questions.*?)([.!?])?$/i,
-    /(?:Got any other questions.*?)([.!?])?$/i,
-    /(?:Have any other questions.*?)([.!?])?$/i,
-    /(?:Any other style questions.*?)([.!?])?$/i,
-    /(?:Other style questions.*?)([.!?])?$/i,
-    /(?:More style questions.*?)([.!?])?$/i,
-    /(?:Any more style questions.*?)([.!?])?$/i,
-    /(?:Got any other style questions.*?)([.!?])?$/i,
-    /(?:Have any other style questions.*?)([.!?])?$/i,
-    /(?:Stay comfortable.*?)([.!?])?$/i,
-    /(?:Stay stylish.*?)([.!?])?$/i,
-    /(?:enjoy the views.*?)([.!?])?$/i,
-    /(?:with confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?)([.!?])?$/i,
-    /(?:Stay.*?stylish.*?)([.!?])?$/i,
-    /(?:enjoy.*?views.*?)([.!?])?$/i,
-    /(?:with.*?confidence.*?)([.!?])?$/i,
-    /(?:comfortable.*?stylish.*?)([.!?])?$/i,
-    /(?:stylish.*?confidence.*?)([.!?])?$/i,
-    /(?:comfortable.*?confidence.*?)([.!?])?$/i,
-    /(?:enjoy.*?confidence.*?)([.!?])?$/i,
-    /(?:views.*?confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?enjoy.*?)([.!?])?$/i,
-    /(?:Stay.*?views.*?)([.!?])?$/i,
-    /(?:Stay.*?confidence.*?)([.!?])?$/i,
-    /(?:comfortable.*?enjoy.*?)([.!?])?$/i,
-    /(?:comfortable.*?views.*?)([.!?])?$/i,
-    /(?:stylish.*?enjoy.*?)([.!?])?$/i,
-    /(?:stylish.*?views.*?)([.!?])?$/i,
-    /(?:confidence.*?enjoy.*?)([.!?])?$/i,
-    /(?:confidence.*?views.*?)([.!?])?$/i,
-    /(?:comfortable.*?stylish.*?confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?stylish.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?stylish.*?confidence.*?)([.!?])?$/i,
-    /(?:comfortable.*?stylish.*?enjoy.*?)([.!?])?$/i,
-    /(?:comfortable.*?stylish.*?views.*?)([.!?])?$/i,
-    /(?:stylish.*?enjoy.*?confidence.*?)([.!?])?$/i,
-    /(?:enjoy.*?views.*?confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?stylish.*?enjoy.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?stylish.*?views.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?stylish.*?confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?enjoy.*?confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?stylish.*?enjoy.*?confidence.*?)([.!?])?$/i,
-    /(?:comfortable.*?stylish.*?enjoy.*?confidence.*?)([.!?])?$/i,
-    /(?:Stay.*?comfortable.*?stylish.*?enjoy.*?confidence.*?)([.!?])?$/i,
-    /(?:Keep it.*?)([.!?])?$/i,
-    /(?:own the.*?)([.!?])?$/i,
-    /(?:Keep.*?it.*?)([.!?])?$/i,
-    /(?:own.*?the.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?)([.!?])?$/i,
-    /(?:Keep it.*?stylish.*?)([.!?])?$/i,
-    /(?:Keep it.*?confident.*?)([.!?])?$/i,
-    /(?:own the.*?scene.*?)([.!?])?$/i,
-    /(?:own the.*?vibe.*?)([.!?])?$/i,
-    /(?:effortless.*?stylish.*?)([.!?])?$/i,
-    /(?:stylish.*?confident.*?)([.!?])?$/i,
-    /(?:effortless.*?confident.*?)([.!?])?$/i,
-    /(?:scene.*?vibe.*?)([.!?])?$/i,
-    /(?:scene.*?confident.*?)([.!?])?$/i,
-    /(?:vibe.*?confident.*?)([.!?])?$/i,
-    /(?:Keep.*?effortless.*?)([.!?])?$/i,
-    /(?:Keep.*?stylish.*?)([.!?])?$/i,
-    /(?:Keep.*?confident.*?)([.!?])?$/i,
-    /(?:own.*?scene.*?)([.!?])?$/i,
-    /(?:own.*?vibe.*?)([.!?])?$/i,
-    /(?:it.*?effortless.*?)([.!?])?$/i,
-    /(?:it.*?stylish.*?)([.!?])?$/i,
-    /(?:it.*?confident.*?)([.!?])?$/i,
-    /(?:the.*?scene.*?)([.!?])?$/i,
-    /(?:the.*?vibe.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?stylish.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?confident.*?)([.!?])?$/i,
-    /(?:Keep it.*?stylish.*?confident.*?)([.!?])?$/i,
-    /(?:own the.*?scene.*?vibe.*?)([.!?])?$/i,
-    /(?:own the.*?scene.*?confident.*?)([.!?])?$/i,
-    /(?:own the.*?vibe.*?confident.*?)([.!?])?$/i,
-    /(?:effortless.*?stylish.*?confident.*?)([.!?])?$/i,
-    /(?:scene.*?vibe.*?confident.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?stylish.*?confident.*?)([.!?])?$/i,
-    /(?:own the.*?scene.*?vibe.*?confident.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?stylish.*?own the.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?stylish.*?scene.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?stylish.*?vibe.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?stylish.*?scene.*?vibe.*?)([.!?])?$/i,
-    /(?:Keep it.*?effortless.*?stylish.*?scene.*?vibe.*?confident.*?)([.!?])?$/i
-  ];
+  
   let result = text;
-  closerPatterns.forEach(pattern => {
-    result = result.replace(pattern, '').trim();
+  
+  // Only remove specific closers at the very end of the text
+  const endCloserPatterns = [
+    /(?:Let me know if.*?)$/i,
+    /(?:Hope (that|this) helps.*?)$/i,
+    /(?:You\'?re all set.*?)$/i,
+    /(?:Keep bringing the style questions.*?)$/i,
+    /(?:I\'?ll keep dishing out the style solutions.*?)$/i,
+    /(?:Rock it with confidence.*?)$/i,
+    /(?:effortlessly cool.*?)$/i,
+    /(?:level up your style game.*?)$/i,
+    /(?:my friend[.!?])$/i,
+    /(?:Just say the word.*?)$/i,
+    /(?:I\'?ve got you covered.*?)$/i,
+    /(?:Keep bringing.*?questions.*?I\'?ll.*?solutions.*?)$/i,
+    /(?:Let\'?s do this.*?)$/i,
+    /(?:Treat yourself to a pair.*?)$/i,
+    /(?:up your workout game.*?)$/i,
+    /(?:Keep.*?coming.*?I\'?ll.*?keep.*?dishing.*?out.*?solutions.*?)$/i,
+    /(?:If you need more.*?Just ask.*?)$/i,
+    /(?:I\'?m always here.*?)$/i,
+    /(?:Let\'?s keep.*?going.*?)$/i,
+    /(?:You got this.*?)$/i,
+    /(?:Showtime baby.*?)$/i,
+    /(?:charisma is irresistible.*?)$/i,
+    /(?:I\'?m just a message away.*?)$/i,
+    /(?:I\'?m here whenever you need.*?)$/i,
+    /(?:Let\'?s keep the style rolling.*?)$/i,
+    /(?:I\'?m always ready to help.*?)$/i,
+    /(?:Ready to help you.*?)$/i,
+    /(?:Just say the word.*?)$/i,
+    /(?:I\'?m here to help.*?)$/i,
+    /(?:Let\'?s dial up your cool factor.*?)$/i,
+    /(?:what\'?s on your mind next.*?)$/i,
+    /(?:I\'?m here to chat.*?)$/i,
+    /(?:let me know how I can help.*?)$/i,
+    /(?:feel free to let me know.*?)$/i,
+    /(?:just let me know.*?)$/i,
+    /(?:so what\'?s on your mind.*?)$/i,
+    /(?:what\'?s next.*?)$/i,
+    /(?:anything else.*?)$/i,
+    /(?:need anything else.*?)$/i,
+    /(?:want anything else.*?)$/i,
+    /(?:can I help with anything else.*?)$/i,
+    /(?:any other questions.*?)$/i,
+    /(?:other questions.*?)$/i,
+    /(?:more questions.*?)$/i,
+    /(?:any more questions.*?)$/i,
+    /(?:got any other questions.*?)$/i,
+    /(?:have any other questions.*?)$/i,
+    /(?:any other style questions.*?)$/i,
+    /(?:other style questions.*?)$/i,
+    /(?:more style questions.*?)$/i,
+    /(?:any more style questions.*?)$/i,
+    /(?:got any other style questions.*?)$/i,
+    /(?:have any other style questions.*?)$/i
+  ];
+  
+  // Only apply patterns that match at the end of the text
+  endCloserPatterns.forEach(pattern => {
+    if (pattern.test(result)) {
+      result = result.replace(pattern, '').trim();
+    }
   });
-  // Remove trailing hype/closer sentences (e.g., "You're all set!", "Hope that helps!", etc.)
-  result = result.replace(/([.!?])\s+([A-Z][^.!?]{0,40}(all set|let me know|hope this helps|keep bringing|keep dishing|rock it|effortlessly cool|level up|my friend|just say the word|got you covered|keep bringing|keep dishing|let's do this|treat yourself|up your workout game|showtime baby|charisma is irresistible|just a message away|here whenever you need|keep the style rolling|always ready to help|ready to help you|just say the word|here to help|let's keep going|let's dial up your cool factor|let's get started|let's level up|let's shop|let's argue|let's fix|let's move|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin|let's move|let's fix|let's argue|let's win|let's keep|let's roll|let's rock|let's go|let's do|let's see|let's find|let's make|let's try|let's talk|let's chat|let's work|let's plan|let's start|let's begin|stay comfortable|stay stylish|enjoy the views|with confidence|comfortable|stylish|enjoy|views|confidence|keep it|own the|effortless|scene|vibe)[^.!?]{0,40}[.!?])/gi, '$1');
+  
+  // Clean up extra whitespace
+  result = result.replace(/\n\s*\n/g, '\n'); // Remove extra line breaks
+  result = result.replace(/\s+/g, ' '); // Normalize whitespace
+  result = result.trim();
+  
   return result;
 }
+
+// Strip numbered lists and convert to natural paragraphs
+// Removed stripLists function - it was causing truncation issues
 
 // Handle chat requests
 exports.handleChat = async (req, res) => {
@@ -194,6 +186,35 @@ exports.handleChat = async (req, res) => {
   if (!message || !userId) {
     return res.status(400).json({ error: 'Message and userId are required.' });
   }
+
+  // Check for gender context in the current message
+  const detectedGender = detectGenderContext(message);
+  
+  // Get or create user and update gender preference if detected
+  let user = await User.findById(userId);
+  if (!user) {
+    // For anonymous users, don't create a User record - just use a default gender preference
+    // The User model requires an email, so we can't create anonymous users
+    user = { preferences: { gender: 'male' } };
+  }
+  
+  // Update gender preference if detected in current message
+  if (detectedGender && user._id) {
+    // Only save if this is a real user (has _id), not an anonymous user
+    user.preferences = user.preferences || {};
+    user.preferences.gender = detectedGender;
+    await user.save();
+    console.log(`DEBUG: Updated user gender preference to: ${detectedGender}`);
+  } else if (detectedGender) {
+    // For anonymous users, just update the local object
+    user.preferences = user.preferences || {};
+    user.preferences.gender = detectedGender;
+    console.log(`DEBUG: Updated anonymous user gender preference to: ${detectedGender}`);
+  }
+  
+  // Get user's stored gender preference (default to male if not set)
+  const userGender = (user.preferences && user.preferences.gender) || 'male';
+  console.log(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
   
   // Very specific regex for actual image/visual requests only
   // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
@@ -246,81 +267,37 @@ exports.handleChat = async (req, res) => {
     conversation.messages.push({ role: 'user', content: message });
     const recentMessages = conversation.messages.slice(-10);
     
-    // Enhanced system prompt with Jules's authentic personality
+    // Jules's authentic personality - using gender-specific context
     const messages = [
-      { role: 'system', content: `You are Jules — a confident, stylish friend who tells it like it is. You're opinionated, natural, and don't sugarcoat things.
-
-PERSONALITY:
-- Confident and direct - you have strong opinions and share them
-- Natural conversationalist - you talk like a real person, not an AI
-- Opinionated about fashion and style - you know what looks good and what doesn't
-- Empathetic but not overly emotional - you care but you're not mushy
-- You have a sense of humor and can be playful
-- You're observant and notice details about people and situations
-- You give practical, actionable advice, not generic platitudes
-
-HOW YOU TALK:
-- Use contractions (you're, I'm, don't, can't, etc.)
-- Be conversational and natural, like talking to a friend
-- Share your actual opinions, not neutral information
-- Ask follow-up questions when you need more context
-- Be direct and honest - if something looks bad, say so
-- Use casual language, not formal or academic tone
-- Keep responses focused and to the point - don't ramble or give unnecessary details
-
-FASHION & STYLE:
-- You have strong opinions about what looks good
-- You know brands and can recommend specific ones
-- You understand fit, quality, and style
-- You can spot trends but prefer timeless pieces
-- You're honest about what works and what doesn't
-
-DATING & RELATIONSHIPS:
-- You give practical, real-world advice
-- You understand social dynamics and human behavior
-- You're supportive but also realistic
-- You can be flirty and playful when appropriate
-
-LIFE ADVICE:
-- You give practical, actionable advice
-- You're honest about challenges and realities
-- You focus on what actually works, not idealistic platitudes
-
-CRITICAL RULES:
-NEVER USE:
-- AI language like "circuits," "algorithms," "processing"
-- Terms of endearment like "honey," "sweetie," "dear"
-- Generic motivational closers or slogans
-- Overly formal or academic language
-- Long, rambling responses that turn into listicles
-- Neutral, ChatGPT-style information dumps
-
-ALWAYS:
-- Be yourself - confident, opinionated, and natural
-- Give specific, actionable advice
-- Ask follow-up questions when you need more context
-- Keep responses focused and conversational
-- Share your actual opinions and preferences
-- Be direct and honest about what you think
-
-EXAMPLES OF GOOD RESPONSES:
-- "Ugh, fast fashion is such a mess. It's cheap but it falls apart after two washes and looks terrible. I'd rather spend a bit more on something that actually lasts."
-- "That outfit sounds perfect for a first date - shows you care without trying too hard. Just make sure the fit is right."
-- "Those shoes are way too formal for that event. You'll look like you're going to a funeral. Go with something more casual."
-
-EXAMPLES OF BAD RESPONSES:
-- "Here are the pros and cons of fast fashion..." (too neutral, listicle)
-- "Remember to be confident and stay true to yourself!" (generic closer)
-- "Fast fashion encompasses various aspects including affordability, accessibility, and environmental considerations..." (ChatGPT-style)
-
-When someone asks for your opinion, give it directly and honestly. When someone asks for advice, be specific and practical. When someone needs support, be empathetic but real.` },
+      { role: 'system', content: getSystemPrompt(userGender) },
       ...recentMessages
     ];
+    
+    // Dynamic token management based on conversation context
+    let maxTokens;
+    const messageCount = messages.length;
+    const isAdviceQuestion = /(ghost|date|relationship|breakup|text|message|call|ignore|respond|feel|hurt|confused|frustrated|angry|sad|upset|anxious|nervous|worried|stressed|overthink|doubt|trust|love|like|crush|feelings|emotion)/i.test(message);
+    const isProductRequestType = /(show|find|recommend|suggest|buy|shop|product|clothing|outfit|shoes|shirt|pants|jacket)/i.test(message);
+    const isSimpleQuestion = /(hi|hello|hey|thanks|thank you|bye|goodbye|yes|no|ok|okay)/i.test(message);
+    
+    if (isSimpleQuestion) {
+      maxTokens = 1500; // Increased for simple interactions
+    } else if (isAdviceQuestion) {
+      maxTokens = 3000; // Reduced for complex advice to stay within limits
+    } else if (isProductRequestType) {
+      maxTokens = 2000; // Reduced for product recommendations
+    } else if (messageCount > 10) {
+      maxTokens = 3000; // Reduced for deep conversations
+    } else {
+      maxTokens = 2000; // Reduced for general conversation
+    }
+    
+    console.log(`DEBUG: Context-aware token limit - Message count: ${messageCount}, Type: ${isAdviceQuestion ? 'advice' : isProductRequestType ? 'product' : isSimpleQuestion ? 'simple' : 'general'}, Max tokens: ${maxTokens}`);
     
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages,
-      max_tokens: 4096, // Maximum allowed for GPT-3.5-turbo
+      max_tokens: maxTokens,
     });
     const reply = completion.choices[0].message.content;
     
@@ -328,6 +305,7 @@ When someone asks for your opinion, give it directly and honestly. When someone 
     console.log('DEBUG: Response length:', reply.length);
     console.log('DEBUG: Response preview:', reply.substring(0, 200) + '...');
     console.log('DEBUG: Response ends with:', reply.substring(reply.length - 50));
+    console.log('DEBUG: Full response:', reply);
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];
@@ -413,6 +391,16 @@ When someone asks for your opinion, give it directly and honestly. When someone 
     // If user is asking for links, try to extract product/brand names from last assistant message
     if (isLinkRequest) {
       console.log('DEBUG: Link request detected, extracting products from conversation...');
+      
+      // Check if this is a request for events/meetups rather than products
+      const eventKeywords = /(meetup|workshop|class|event|drawing|art|portland)/i;
+      if (eventKeywords.test(message)) {
+        // For event/meetup requests, don't search for products
+        conversation.messages.push({ role: 'assistant', content: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.` });
+        await conversation.save();
+        return res.json({ reply: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.`, products: [] });
+      }
+      
       // Use the user's message directly for search instead of extracting from Jules's response
       let searchQuery = message;
       const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
@@ -482,12 +470,35 @@ When someone asks for your opinion, give it directly and honestly. When someone 
       }
     }
     
-    conversation.messages.push({ role: 'assistant', content: cleanedReply.trim() });
-    await conversation.save();
-    res.json({ reply: cleanedReply.trim(), products });
+    const finalReply = cleanedReply.trim();
+    console.log('DEBUG: Backend final reply length:', finalReply.length);
+    console.log('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
+    console.log('DEBUG: Backend sending response to frontend');
+    
+    conversation.messages.push({ role: 'assistant', content: finalReply });
+    
+    console.log('DEBUG: About to send JSON response');
+    res.json({ reply: finalReply, products });
+    console.log('DEBUG: JSON response sent successfully');
+    
+    // Save conversation after sending response to avoid blocking
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      try {
+        await conversation.save();
+        console.log('DEBUG: Conversation saved successfully');
+      } catch (saveError) {
+        console.error('DEBUG: Error saving conversation:', saveError);
+        // Don't fail the request if save fails
+      }
+    }
   } catch (err) {
-    console.error('OpenAI error:', err);
-    res.status(500).json({ error: 'Error processing chat.' });
+    // Handle CastError specifically for invalid userIds
+    if (err.name === 'CastError' && err.kind === 'ObjectId') {
+      console.log('DEBUG: Caught CastError for invalid ObjectId:', err.value);
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
+    console.error('Chat handler error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
