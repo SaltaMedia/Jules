@@ -214,9 +214,15 @@ exports.handleChat = async (req, res) => {
   const detectedGender = detectGenderContext(message);
   
   // Get or create user and update gender preference if detected
-  let user = await User.findById(userId);
+  let user = null;
+  
+  // Check if userId is a valid ObjectId
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    user = await User.findById(userId);
+  }
+  
   if (!user) {
-    // For anonymous users, don't create a User record - just use a default gender preference
+    // For anonymous users or invalid userIds, don't create a User record - just use a default gender preference
     // The User model requires an email, so we can't create anonymous users
     user = { preferences: { gender: 'male' } };
   }
@@ -255,13 +261,16 @@ exports.handleChat = async (req, res) => {
   
   if (isImageRequest) {
     // Save the static message to conversation and return it
-    let conversation = await Conversation.findOne({ userId });
-    if (!conversation) {
-      conversation = new Conversation({ userId, messages: [] });
+    let conversation = null;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      conversation = await Conversation.findOne({ userId });
+      if (!conversation) {
+        conversation = new Conversation({ userId, messages: [] });
+      }
+      conversation.messages.push({ role: 'user', content: message });
+      conversation.messages.push({ role: 'assistant', content: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance." });
+      await conversation.save();
     }
-    conversation.messages.push({ role: 'user', content: message });
-    conversation.messages.push({ role: 'assistant', content: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance." });
-    await conversation.save();
     return res.json({ reply: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance.", products: [] });
   }
 
@@ -283,12 +292,20 @@ exports.handleChat = async (req, res) => {
   console.log('DEBUG: isLinkRequest:', isLinkRequest);
   
   try {
-    let conversation = await Conversation.findOne({ userId });
-    if (!conversation) {
-      conversation = new Conversation({ userId, messages: [] });
+    let conversation = null;
+    let recentMessages = [];
+    
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      conversation = await Conversation.findOne({ userId });
+      if (!conversation) {
+        conversation = new Conversation({ userId, messages: [] });
+      }
+      conversation.messages.push({ role: 'user', content: message });
+      recentMessages = conversation.messages.slice(-10);
+    } else {
+      // For invalid userIds, just use the current message
+      recentMessages = [{ role: 'user', content: message }];
     }
-    conversation.messages.push({ role: 'user', content: message });
-    const recentMessages = conversation.messages.slice(-10);
     
     // Jules's authentic personality - using gender-specific context
     const messages = [
