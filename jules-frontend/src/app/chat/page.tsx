@@ -134,7 +134,7 @@ export default function Chat() {
     setInputText("");
     setIsLoading(true);
 
-    const userId = getUserIdFromToken() || 'test123'; // Use test user if no token
+    const userId = getUserIdFromToken() || '687986e4107cd935660bd46d'; // Use test user if no token
 
     try {
       // If user asks for examples, fetch images
