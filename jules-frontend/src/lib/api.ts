@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://jules-bsnr.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:4000' : 'https://jules-bsnr.onrender.com');
 
 // Helper function to get auth token
 const getAuthToken = () => {
