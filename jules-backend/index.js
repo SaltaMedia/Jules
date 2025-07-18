@@ -64,27 +64,39 @@ app.use('/api/auth', passport.session());
 
 // Google OAuth routes (only if configured)
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  console.log('DEBUG: Google OAuth configured with client ID:', process.env.GOOGLE_CLIENT_ID);
+  
   app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
   app.get('/api/auth/google/callback', (req, res, next) => {
-  passport.authenticate('google', (err, user, info) => {
-    if (err) {
-      console.error('GOOGLE OAUTH ERROR:', err, info);
-      return res.status(401).send('Google OAuth Error: ' + JSON.stringify(err) + ' Info: ' + JSON.stringify(info));
-    }
-    if (!user) {
-      console.error('GOOGLE OAUTH NO USER:', info);
-      return res.status(401).send('Google OAuth No User: ' + JSON.stringify(info));
-    }
-    const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
-    const token = jwt.sign({ userId: user._id, email: user.email, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: '7d' });
-    const redirectUrl = process.env.NODE_ENV === 'production' 
-      ? `https://www.juleslabs.com/auth/callback?token=${token}`
-      : `http://localhost:3000/auth/callback?token=${token}`;
-    res.redirect(redirectUrl);
-  })(req, res, next);
+    console.log('DEBUG: Google OAuth callback received');
+    console.log('DEBUG: Query params:', req.query);
+    
+    passport.authenticate('google', (err, user, info) => {
+      if (err) {
+        console.error('GOOGLE OAUTH ERROR:', err, info);
+        return res.status(401).send('Google OAuth Error: ' + JSON.stringify(err) + ' Info: ' + JSON.stringify(info));
+      }
+      if (!user) {
+        console.error('GOOGLE OAUTH NO USER:', info);
+        return res.status(401).send('Google OAuth No User: ' + JSON.stringify(info));
+      }
+      
+      console.log('DEBUG: Google OAuth successful, user:', user.email);
+      
+      const jwt = require('jsonwebtoken');
+      const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
+      const token = jwt.sign({ userId: user._id, email: user.email, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: '7d' });
+      const redirectUrl = process.env.NODE_ENV === 'production' 
+        ? `https://www.juleslabs.com/auth/callback?token=${token}`
+        : `http://localhost:3000/auth/callback?token=${token}`;
+      
+      console.log('DEBUG: Redirecting to:', redirectUrl);
+      res.redirect(redirectUrl);
+    })(req, res, next);
   });
+} else {
+  console.log('DEBUG: Google OAuth not configured - missing credentials');
 }
 
 app.get('/test', (req, res) => res.send('Express is working!'));
