@@ -48,7 +48,10 @@ function LoginInner() {
 
   const handleGoogleLogin = () => {
     // Redirect to backend Google OAuth
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/google`;
+    const apiUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+      ? 'http://localhost:4000' 
+      : 'https://jules-bsnr.onrender.com';
+    window.location.href = `${apiUrl}/api/auth/google`;
   };
 
   return (
