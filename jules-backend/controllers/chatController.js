@@ -254,10 +254,12 @@ exports.handleChat = async (req, res) => {
   const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|loafers|vans)/i.test(message);
   
   // Very specific shopping triggers - only when explicitly asking for products/links
-  const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|need|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message);
+  // Exclude "need advice", "need help", "advice", "help" - only shopping-specific requests
+  const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message) && !/(need\s*advice|need\s*help|advice|help|outfit\s*advice|style\s*advice)/i.test(message);
   
   // Only trigger product search when asking about clothing/outfits AND asking for shopping links
-  const isProductRequest = clothingOutfitRequest && askingForRecommendations;
+  // AND NOT asking for advice
+  const isProductRequest = clothingOutfitRequest && askingForRecommendations && !/(advice|help)/i.test(message);
   
   // Check if user is asking for links to products Jules just mentioned
   const isLinkRequest = /(links?|examples?|show\\s*me|can\\s*you\\s*show|where\\s*can\\s*i|any\\s*examples?|got\\s*examples?)/i.test(message) && !isProductRequest;
