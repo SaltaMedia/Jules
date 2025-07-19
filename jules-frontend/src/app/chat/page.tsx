@@ -236,7 +236,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 via-white to-gray-200">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 via-white to-gray-200 pb-safe">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur border-b px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
@@ -245,35 +245,42 @@ export default function Chat() {
           </div>
           <h1 className="font-semibold text-lg text-gray-900">Jules</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <select
-            value={selectedVoice}
-            onChange={e => setSelectedVoice(e.target.value)}
-            className="px-2 py-1 rounded border text-sm bg-white text-gray-700"
-            title="Select Jules' Voice"
-          >
-            {voices.map(v => (
-              <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
-            ))}
-          </select>
-          <button
-            onClick={() => setVoiceEnabled((v) => !v)}
-            className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${voiceEnabled ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300'}`}
-            title="Toggle Jules Voice"
-          >
-            {voiceEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
-          </button>
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* Hide voice controls on mobile to save space */}
+          <div className="hidden md:flex items-center gap-2">
+            <select
+              value={selectedVoice}
+              onChange={e => setSelectedVoice(e.target.value)}
+              className="px-2 py-1 rounded border text-sm bg-white text-gray-700"
+              title="Select Jules' Voice"
+            >
+              {voices.map(v => (
+                <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setVoiceEnabled((v) => !v)}
+              className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${voiceEnabled ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300'}`}
+              title="Toggle Jules Voice"
+            >
+              {voiceEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
+            </button>
+          </div>
+          {/* Mobile-optimized back button */}
           <Link
             href="/"
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors p-2"
+            title="Back to Home"
           >
-            ← Back to Home
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </Link>
         </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-4">
         <div className="max-w-2xl mx-auto flex flex-col gap-2">
           {messages.map((message) => (
             <div
@@ -365,21 +372,31 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="bg-white/80 backdrop-blur border-t px-4 py-3 flex items-center justify-between shadow-sm">
+      <div className="bg-white/80 backdrop-blur border-t px-4 py-3 flex items-center justify-between shadow-sm sticky bottom-0 z-10">
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyPress}
-          className="flex-1 px-4 py-2 rounded border text-sm bg-white text-gray-700"
+          className="flex-1 px-4 py-2 rounded-full border text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Type your message..."
         />
         <button
           onClick={sendMessage}
-          className="px-4 py-2 rounded-full text-sm font-medium border transition-colors bg-blue-500 text-white"
+          disabled={!inputText.trim() || isLoading}
+          className="ml-2 px-4 py-2 rounded-full text-sm font-medium border transition-colors bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
           title="Send message"
         >
-          Send
+          {isLoading ? (
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          )}
         </button>
       </div>
     </div>
