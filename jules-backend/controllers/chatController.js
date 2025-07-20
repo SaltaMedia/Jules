@@ -20,6 +20,16 @@ function detectGenderContext(message) {
   return null;
 }
 
+// Function to classify user intent for routing and behavior control
+function classifyIntent(input) {
+  const msg = input.toLowerCase();
+  if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
+  if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style")) return "style_advice";
+  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand")) return "product_request";
+  if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say")) return "dating_advice";
+  return "general_chat";
+}
+
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
   const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent woman who helps MEN improve their dating lives, style, confidence, and social skills. You speak like a flirty, stylish, brutally honest older sister. You care, but don't coddle. You're sharp, curious, funny, and human — never robotic.
@@ -36,6 +46,8 @@ RULES:
 - NEVER explain your formatting or why you're suggesting something.
 - NEVER use numbered lists or bullet points — except when giving a detailed **outfit breakdown** (e.g. "- **Outfit:** Slim dark jeans, plain tee…").
 - NEVER use emojis, vibe-talk ("this outfit gives off…"), bloggy tone, or try-hard copywriting phrases.
+- NEVER use terms like "hun", "sweetie", "dear", or other overly familiar/cutesy terms.
+- NEVER end every response with a question - only ask questions when genuinely curious or when advice is needed.
 - NEVER overexplain. Be clear, bold, fast.
 - NEVER break character or refer to yourself as an AI unless explicitly asked.
 
@@ -296,6 +308,14 @@ exports.handleChat = async (req, res) => {
   const userGender = (user.preferences && user.preferences.gender) || 'male';
   console.log(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
   
+  // Classify user intent for routing and behavior control
+  const intent = classifyIntent(message);
+  console.log(`DEBUG: Classified intent: ${intent}`);
+  
+  // Determine if product cards should be shown based on intent
+  const showProductCards = (intent === "product_request");
+  console.log(`DEBUG: Show product cards: ${showProductCards}`);
+  
   // Very specific regex for actual image/visual requests only
   // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
   // But NOT: show me links, show me products, etc.
@@ -361,8 +381,15 @@ exports.handleChat = async (req, res) => {
     }
     
     // Jules's authentic personality - using gender-specific context
+    // For emotional support intent, ensure no product recommendations are given
+    let systemPrompt = getSystemPrompt(userGender);
+    if (intent === "emotional_support") {
+      // Add additional instruction to focus only on emotional support
+      systemPrompt += "\n\nEMOTIONAL SUPPORT MODE: The user is seeking emotional support. Focus ONLY on emotional validation, listening, and support. Do NOT provide any fashion advice, product recommendations, or style tips. Be empathetic and supportive without suggesting any shopping or style solutions.";
+    }
+    
     const messages = [
-      { role: 'system', content: getSystemPrompt(userGender) },
+      { role: 'system', content: systemPrompt },
       ...recentMessages
     ];
     
@@ -418,7 +445,8 @@ exports.handleChat = async (req, res) => {
     }
     
     // If this is a product request and we don't have products yet, search for them
-    if (isProductRequest && products.length === 0) {
+    // Only search for products if intent is product_request and showProductCards is true
+    if (isProductRequest && products.length === 0 && showProductCards) {
       console.log('DEBUG: Product request detected, searching for products...');
       try {
         // Call the product search function directly
@@ -508,7 +536,8 @@ exports.handleChat = async (req, res) => {
     }
     
     // If user is asking for links, try to extract product/brand names from last assistant message
-    if (isLinkRequest) {
+    // Only process link requests if intent is product_request and showProductCards is true
+    if (isLinkRequest && showProductCards) {
       console.log('DEBUG: Link request detected, extracting products from conversation...');
       
       // Check if this is a request for events/meetups rather than products
@@ -632,7 +661,9 @@ exports.handleChat = async (req, res) => {
     }
     
     console.log('DEBUG: About to send JSON response');
-    res.json({ reply: finalReply, products });
+    // Only include products in response if showProductCards is true
+    const responseProducts = showProductCards ? products : [];
+    res.json({ reply: finalReply, products: responseProducts });
     console.log('DEBUG: JSON response sent successfully');
   } catch (err) {
     // Handle CastError specifically for invalid userIds

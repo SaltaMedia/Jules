@@ -77,7 +77,7 @@ export default function Chat() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [lastScenario, setLastScenario] = useState<string>("");
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,8 +109,10 @@ export default function Chat() {
   useEffect(() => {
     if (voiceEnabled && messages.length > 0 && selectedVoice) {
       const last = messages[messages.length - 1];
-      if (last.sender === "jules") {
-        const utter = new window.SpeechSynthesisUtterance(last.text || "");
+      if (last.sender === "jules" && last.text) {
+        // Stop any current speech to prevent overlapping
+        window.speechSynthesis.cancel();
+        const utter = new window.SpeechSynthesisUtterance(last.text);
         utter.lang = "en-US";
         const voice = voices.find(v => v.name === selectedVoice);
         if (voice) utter.voice = voice;
@@ -139,12 +141,8 @@ export default function Chat() {
     try {
       // If user asks for examples, fetch images
       if (/show me examples|show me|visual examples|can i see|more|again|another/i.test(messageText)) {
-        let scenario = lastScenario;
-        // Find the last scenario or outfit advice from Jules
-        const found = [...messages].reverse().find(m => m.sender === 'jules' && typeof m.text === 'string' && /jeans|jacket|shirt|sneakers|boots|outfit|look|wear/i.test(m.text));
-        scenario = found && found.text ? found.text : messageText;
-        setLastScenario(scenario);
-        const data = await chat.sendMessage(scenario, userId);
+        // Use the current user message, not Jules's responses
+        const data = await chat.sendMessage(messageText, userId);
         const julesTextMessage: Message = {
           id: (Date.now() + 1).toString(),
           text: data.reply || data.response || "I'm having trouble responding right now. Try again!",
@@ -173,7 +171,6 @@ export default function Chat() {
         }
         setMessages((prev) => [...prev, ...newMessages]);
       } else {
-        setLastScenario(messageText);
         const data = await chat.sendMessage(messageText, userId);
         const julesTextMessage: Message = {
           id: (Date.now() + 1).toString(),
