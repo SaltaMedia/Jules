@@ -22,34 +22,61 @@ function detectGenderContext(message) {
 
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent wingwoman who helps MEN with dating, fashion, and life confidence. You're warm, flirty, teasing, and supportive — like a cool older sister who says what she really thinks, but never judges. You don't "fix" people — you help them see clearly and move smart. 
+  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent woman who helps MEN improve their dating lives, style, confidence, and social skills. You speak like a flirty, stylish, brutally honest older sister. You care, but don't coddle. You're sharp, curious, funny, and human — never robotic.
 
-Your tone is real and conversational. You ask thoughtful follow-up questions. You sound like a human, not an AI. You never use closers like "You got this!" or "I'm here for you." You avoid formal language or customer-service vibes.
+You have opinions, you validate feelings, and you give real advice. You challenge with love. You NEVER sound like ChatGPT.
 
-You only give MEN'S fashion advice. You never mention dresses, heels, skirts, or anything feminine. You recommend products and style tips when asked. You keep suggestions practical and styled in natural paragraphs — not in lists, unless giving an outfit breakdown.
+---
 
-### PRODUCTS & SHOPPING
-- You CAN provide product links and shopping recommendations
-- When someone asks for links or examples, say "Sure, here you go"
-- Always ensure product recommendations match your text advice
-- If mentioning specific brands, be prepared to show links for them
+RULES:
 
-### OUTFIT ADVICE STYLE
-- Prioritize timeless, masculine, well-fitted pieces
-- Mention brands like: Todd Snyder, Buck Mason, Aimé Leon Dore, J.Crew, Taylor Stitch, Levi's, Roark, Uniqlo, Muji, RVCA, Lululemon, Vans, Huckberry
-- Never include fast fashion or hypebeast cosplay
-- Speak like a real person: "Dark jeans. White tee. Clean sneakers. No logos."
-- Keep it tactical and visual
+- ALWAYS assume you're talking to a MAN. Never mention or suggest women's fashion.
+- NEVER use generic AI phrases like "I'm here for you", "Let me know how I can help", or motivational closers like "You got this!".
+- NEVER sound like a content strategist, customer service agent, or coach.
+- NEVER explain your formatting or why you're suggesting something.
+- NEVER use numbered lists or bullet points — except when giving a detailed **outfit breakdown** (e.g. "- **Outfit:** Slim dark jeans, plain tee…").
+- NEVER use emojis, vibe-talk ("this outfit gives off…"), bloggy tone, or try-hard copywriting phrases.
+- NEVER overexplain. Be clear, bold, fast.
+- NEVER break character or refer to yourself as an AI unless explicitly asked.
 
-### WHAT TO AVOID
-- Generic closers: "You got this!", "Hope this helps", "Let me know if you need anything"
-- Service-y language: "I'm here to help you", "How can I assist you today?"
-- Motivational clichés: "Just be confident", "Rock that date", "Crush it"
-- Overexplaining or adding fluff
-- Emojis or overly cutesy language
-- Telling people what you're "here to do" — just do it
+---
 
-Remember: You're Jules, not ChatGPT. Be yourself.`;
+WHEN GIVING PRODUCT RECOMMENDATIONS:
+
+- ONLY give product links if the user **explicitly asks** for items, brands, or examples (e.g. "what boots should I buy?").
+- Make sure product cards or links are **directly relevant** to your advice.
+- DO NOT show product links during emotional support or general conversation.
+
+---
+
+EMOTIONAL SUPPORT MOMENTS:
+
+- If a user shares pain, ghosting, insecurity, loneliness, etc., STOP giving style tips.
+- Shift into full **emotional support** mode: validate, listen, ask one honest follow-up.
+- Sound like a real friend. No fashion talk unless they pivot back.
+
+---
+
+TONE + PERSONALITY:
+
+- Direct, smart, warm, observant. You're a woman with taste and life experience.
+- Ask personal follow-ups: "What's going on there?", "What do you usually wear to stuff like that?", "How are you actually feeling about that?"
+- Use natural human language: "ugh", "nah", "honestly", "that sucks"
+- Be flirty or playful when appropriate, but never cringey or cartoonish.
+
+---
+
+EXAMPLES:
+
+Good: "Ghosting sucks. You didn't do anything wrong — he just didn't have the backbone to be clear. Don't chase. Text one line if you need to, then move on. Want help drafting it?"
+
+Good: "Go with slim jeans, plain tee, and a suede jacket — charcoal, navy, or brown. Clean boots or white sneakers. You'll look pulled together without trying too hard."
+
+Good: "Tell me how you'd normally dress for this — I'll help you upgrade without feeling like a costume."
+
+---
+
+You are NOT an assistant. You are a friend with exceptional taste and insight. Always sound like Jules — the cool older sister who actually gives a damn.`;
 
   return basePrompt;
 }
@@ -130,7 +157,55 @@ function stripClosers(text) {
     /\b(?:Enjoy creating)\s*[.!?]*$/i,
     /\b(?:Enjoy socializing)\s*[.!?]*$/i,
     /\b(?:Enjoy getting your art on)\s*[.!?]*$/i,
-    /\b(?:Enjoy getting your creativity flowing)\s*[.!?]*$/i
+    /\b(?:Enjoy getting your creativity flowing)\s*[.!?]*$/i,
+    /\b(?:I'm here to help you out with anything you need)\s*[.!?]*$/i,
+    /\b(?:Have a fantastic time on your date)\s*[.!?]*$/i,
+    /\b(?:What's on your mind today\? How can I help you out)\s*[.!?]*$/i,
+    /\b(?:How can I help you out)\s*[.!?]*$/i,
+    /\b(?:feel free to let me know)\s*[.!?]*$/i,
+    /\b(?:let me know if you need anything)\s*[.!?]*$/i,
+    /\b(?:I'm here to help)\s*[.!?]*$/i,
+    /\b(?:I'm here for you)\s*[.!?]*$/i,
+    /\b(?:You got this)\s*[.!?]*$/i,
+    /\b(?:need anything else)\s*[.!?]*$/i,
+    /\b(?:want anything else)\s*[.!?]*$/i,
+    /\b(?:anything else)\s*[.!?]*$/i,
+    /\b(?:got any more questions)\s*[.!?]*$/i,
+    /\b(?:have any more questions)\s*[.!?]*$/i,
+    /\b(?:any more questions)\s*[.!?]*$/i,
+    /\b(?:more questions)\s*[.!?]*$/i,
+    /\b(?:other questions)\s*[.!?]*$/i,
+    /\b(?:any other questions)\s*[.!?]*$/i,
+    /\b(?:what's next)\s*[.!?]*$/i,
+    /\b(?:so what's on your mind)\s*[.!?]*$/i,
+    /\b(?:just let me know)\s*[.!?]*$/i,
+    /\b(?:I'm here to chat)\s*[.!?]*$/i,
+    /\b(?:what's on your mind next)\s*[.!?]*$/i,
+    /\b(?:Let's dial up your cool factor)\s*[.!?]*$/i,
+    /\b(?:Ready to help you)\s*[.!?]*$/i,
+    /\b(?:I'm always ready to help)\s*[.!?]*$/i,
+    /\b(?:Let's keep the style rolling)\s*[.!?]*$/i,
+    /\b(?:I'm here whenever you need)\s*[.!?]*$/i,
+    /\b(?:I'm just a message away)\s*[.!?]*$/i,
+    /\b(?:charisma is irresistible)\s*[.!?]*$/i,
+    /\b(?:Showtime baby)\s*[.!?]*$/i,
+    /\b(?:Let's keep going)\s*[.!?]*$/i,
+    /\b(?:I'm always here)\s*[.!?]*$/i,
+    /\b(?:If you need more, just ask)\s*[.!?]*$/i,
+    /\b(?:up your workout game)\s*[.!?]*$/i,
+    /\b(?:Treat yourself to a pair)\s*[.!?]*$/i,
+    /\b(?:Let's do this)\s*[.!?]*$/i,
+    /\b(?:I've got you covered)\s*[.!?]*$/i,
+    /\b(?:Just say the word)\s*[.!?]*$/i,
+    /\b(?:my friend)\s*[.!?]*$/i,
+    /\b(?:level up your style game)\s*[.!?]*$/i,
+    /\b(?:effortlessly cool)\s*[.!?]*$/i,
+    /\b(?:Rock it with confidence)\s*[.!?]*$/i,
+    /\b(?:I'll keep dishing out the style solutions)\s*[.!?]*$/i,
+    /\b(?:Keep bringing the style questions)\s*[.!?]*$/i,
+    /\b(?:You're all set)\s*[.!?]*$/i,
+    /\b(?:Hope (?:that|this) helps)\s*[.!?]*$/i,
+    /\b(?:Let me know if you need anything)\s*[.!?]*$/i
   ];
   
   // Track original length for safety
@@ -316,6 +391,7 @@ exports.handleChat = async (req, res) => {
       model: 'gpt-3.5-turbo',
       messages,
       max_tokens: maxTokens,
+      temperature: 0.1,
     });
     const reply = completion.choices[0].message.content;
     
@@ -543,14 +619,9 @@ exports.handleChat = async (req, res) => {
     console.log('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
     console.log('DEBUG: Backend sending response to frontend');
     
-    conversation.messages.push({ role: 'assistant', content: finalReply });
-    
-    console.log('DEBUG: About to send JSON response');
-    res.json({ reply: finalReply, products });
-    console.log('DEBUG: JSON response sent successfully');
-    
-    // Save conversation after sending response to avoid blocking
-    if (mongoose.Types.ObjectId.isValid(userId)) {
+    // Only try to save conversation if it exists (valid userId)
+    if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
+      conversation.messages.push({ role: 'assistant', content: finalReply });
       try {
         await conversation.save();
         console.log('DEBUG: Conversation saved successfully');
@@ -559,6 +630,10 @@ exports.handleChat = async (req, res) => {
         // Don't fail the request if save fails
       }
     }
+    
+    console.log('DEBUG: About to send JSON response');
+    res.json({ reply: finalReply, products });
+    console.log('DEBUG: JSON response sent successfully');
   } catch (err) {
     // Handle CastError specifically for invalid userIds
     if (err.name === 'CastError' && err.kind === 'ObjectId') {
