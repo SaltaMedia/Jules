@@ -373,9 +373,13 @@ exports.handleChat = async (req, res) => {
   
   let userId;
   
-  // Auth0 user ID (production or dev if logged in)
+  // Check for user ID from JWT token (handles both Auth0 and Google OAuth)
   if (req.user?.sub) {
+    // Auth0 format
     userId = req.user.sub;
+  } else if (req.user?.userId) {
+    // Google OAuth format
+    userId = req.user.userId;
   } else {
     const host = req.headers.host || '';
     const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
