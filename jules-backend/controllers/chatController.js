@@ -4,7 +4,7 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const axios = require('axios');
 const mongoose = require('mongoose');
-const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary } = require('../utils/userMemoryStore');
+const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary, addSessionMessage, getSessionHistory } = require('../utils/userMemoryStore');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -24,6 +24,9 @@ function detectGenderContext(message) {
 // Function to classify user intent for routing and behavior control
 function classifyIntent(input) {
   const msg = input.toLowerCase();
+  
+  // Vague chat detection moved to main handler for escalating tone
+  
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
   if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style")) return "style_advice";
   if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand")) return "product_request";
@@ -420,6 +423,55 @@ exports.handleChat = async (req, res) => {
   const intent = classifyIntent(message);
   console.log(`DEBUG: Classified intent: ${intent}`);
   
+  // === TRACK VAGUE CHAT COUNT ===
+  const userMemory = getUserMemory(userId);
+  if (!userMemory.vagueChatCount) userMemory.vagueChatCount = 0;
+
+  const vagueTriggers = [
+    "wyd", "you there", "hey", "hello?", "just chatting", "idk", "nothing really"
+  ];
+
+  const isVague = vagueTriggers.some(trigger =>
+    message.toLowerCase().includes(trigger)
+  );
+
+  if (isVague) {
+    userMemory.vagueChatCount += 1;
+    console.log('DEBUG: VAGUE CHAT DETECTED - triggering escalating response');
+    console.log('DEBUG: Before increment - vagueChatCount:', userMemory.vagueChatCount - 1);
+    console.log('DEBUG: After increment - vagueChatCount:', userMemory.vagueChatCount);
+
+    const vagueCount = userMemory.vagueChatCount;
+
+    let vagueResponse;
+    if (vagueCount === 1) {
+      vagueResponse = "Yep, still here. What's up?";
+    } else if (vagueCount === 2) {
+      vagueResponse = "You've got my attention — now give me something to work with. Work stress? Style fix? Dating mess?";
+    } else {
+      vagueResponse = "I'm not here to chase you around in circles. Let's talk for real — what's actually on your mind?";
+    }
+
+    // Save the static message to conversation and return it
+    let conversation = null;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      conversation = await Conversation.findOne({ userId });
+      if (!conversation) {
+        conversation = new Conversation({ userId, messages: [] });
+      }
+      conversation.messages.push({ role: 'user', content: message });
+      conversation.messages.push({ role: 'assistant', content: vagueResponse });
+      await conversation.save();
+    }
+    return res.json({ reply: vagueResponse, products: [] });
+  } else {
+    // Reset vague chat count if user sends a substantive message
+    if (userMemory.vagueChatCount > 0) {
+      userMemory.vagueChatCount = 0;
+      console.log('DEBUG: Reset vague chat count to 0');
+    }
+  }
+  
   // Determine if product cards should be shown based on intent
   const showProductCards = (intent === "product_request");
   console.log(`DEBUG: Show product cards: ${showProductCards}`);
@@ -488,6 +540,10 @@ exports.handleChat = async (req, res) => {
       recentMessages = [{ role: 'user', content: message }];
     }
     
+    // === SESSION MEMORY SETUP ===
+    addSessionMessage(userId, { role: "user", content: message });
+    const convoHistory = getSessionHistory(userId);
+    
     // Load user memory and create enhanced memory summary with tone profile
     const tone = getToneProfile(userId);
     const memorySummary = getMemorySummary(userId);
@@ -503,16 +559,40 @@ RECENT MEMORY (Last 7 days):
 ${recentMemorySummary}
 `;
 
-    // Jules's authentic personality - using gender-specific context
-    // For emotional support intent, ensure no product recommendations are given
-    let systemPrompt = getSystemPrompt(userGender);
+    // === SYSTEM PROMPT WITH PERSONALITY AND CONTEXT ===
+    let systemPrompt = `You are Jules — a confident, emotionally intelligent, stylish woman who helps men with dating, fashion, and life. You talk like a real person — not a hype machine or a content bot.
+
+Your baseline tone is:
+- Calm, cool, a little flirty — never over-the-top or high-energy.
+- Emotionally intuitive: You read the room and respond with care.
+- Direct but never aggressive. You nudge, not push.
+- You're not in a rush — conversations should feel smooth, smart, and real.
+- You never make assumptions before the user gives you details.
+- You don't overcompensate with exclamation points, filler phrases, or unnecessary energy.
+
+Critical: Stay emotionally grounded. Don't assume topics (like "dating drama") unless the user clearly signals them. Never act performative. Act human.
+
+Examples:
+Bad → "Spill the tea! What's the scoop? Let's get to the good stuff!"
+Good → "Okay, sounds like there's something going on. What's up?"
+
+Bad → "Let's make you look like a total heartthrob at this garden affair!"
+Good → "Let's find something sharp that feels like you — cool, appropriate, but still stands out a little."
+
+Keep it natural. Keep it specific. Keep it smart.
+
+Conversation so far:
+${convoHistory}
+
+${enhancedMemoryContext}`;
+
     if (intent === "emotional_support") {
       // Add additional instruction to focus only on emotional support
       systemPrompt += "\n\nEMOTIONAL SUPPORT MODE: The user is seeking emotional support. Focus ONLY on emotional validation, listening, and support. Do NOT provide any fashion advice, product recommendations, or style tips. Be empathetic and supportive without suggesting any shopping or style solutions.";
     }
     
     const messages = [
-      { role: 'system', content: enhancedMemoryContext + "\n\n" + systemPrompt },
+      { role: 'system', content: systemPrompt },
       ...recentMessages
     ];
     
@@ -543,7 +623,15 @@ ${recentMemorySummary}
       max_tokens: maxTokens,
       temperature: 0.1,
     });
-    const reply = completion.choices[0].message.content;
+    let reply = completion.choices[0].message.content;
+    
+    // Guard to prevent over-roleplaying and dating dilemma assumptions
+    if (!message.toLowerCase().includes("dating") && reply.toLowerCase().includes("dating dilemma")) {
+      reply = reply.replace(/dating dilemma[^.?!]*[.?!]/gi, "");
+    }
+    
+    // Add assistant's response to session memory
+    addSessionMessage(userId, { role: "assistant", content: reply });
     
     // Update user memory based on intent with enhanced extraction
     const extractedData = {};

@@ -7,6 +7,8 @@ function getUserMemory(userId) {
       emotionalNotes: [],
       productHistory: [],
       goals: [],
+      recentMessages: [], // Add session memory for recent messages
+      vagueChatCount: 0, // Track vague chat count
     };
   }
   return memoryStore[userId];
@@ -104,6 +106,24 @@ Recent goals: ${goals}
 `.trim();
 }
 
+// Session memory functions
+function addSessionMessage(userId, message) {
+  const memory = getUserMemory(userId);
+  memory.recentMessages.push(message);
+  
+  // Keep only the last 10 messages
+  if (memory.recentMessages.length > 10) {
+    memory.recentMessages.shift();
+  }
+}
+
+function getSessionHistory(userId) {
+  const memory = getUserMemory(userId);
+  return memory.recentMessages
+    .map(msg => `${msg.role}: ${msg.content}`)
+    .join('\n');
+}
+
 module.exports = {
   getUserMemory,
   updateUserMemory,
@@ -111,4 +131,6 @@ module.exports = {
   getToneProfile,
   getRecentMemory,
   getRecentMemorySummary,
+  addSessionMessage,
+  getSessionHistory,
 }; 
