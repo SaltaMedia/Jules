@@ -4,6 +4,7 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const axios = require('axios');
 const mongoose = require('mongoose');
+const { getUserMemory, updateUserMemory } = require('../utils/userMemoryStore');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -28,6 +29,44 @@ function classifyIntent(input) {
   if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand")) return "product_request";
   if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say")) return "dating_advice";
   return "general_chat";
+}
+
+// Memory extraction functions
+function extractStyle(input) {
+  if (input.includes("casual")) return "casual";
+  if (input.includes("streetwear")) return "streetwear";
+  if (input.includes("formal") || input.includes("business")) return "formal";
+  if (input.includes("athletic") || input.includes("workout")) return "athletic";
+  if (input.includes("minimalist") || input.includes("simple")) return "minimalist";
+  return "unspecified";
+}
+
+function extractEmotion(input) {
+  if (input.includes("ghosted")) return "felt ghosted";
+  if (input.includes("rejected")) return "experienced rejection";
+  if (input.includes("lonely") || input.includes("alone")) return "feeling lonely";
+  if (input.includes("confident") || input.includes("confident")) return "seeking confidence";
+  if (input.includes("nervous") || input.includes("anxious")) return "feeling anxious";
+  return "general frustration";
+}
+
+function extractProducts(input) {
+  // Extract product mentions from input
+  const products = [];
+  const productKeywords = /(shoes|boots|sneakers|shirt|tee|jeans|pants|jacket|blazer|suit|tie|belt|watch|accessory)/gi;
+  const matches = input.match(productKeywords);
+  if (matches) {
+    products.push(...matches);
+  }
+  return products.length > 0 ? products.join(", ") : input;
+}
+
+function extractGoals(input) {
+  if (input.includes("first date")) return "first date preparation";
+  if (input.includes("relationship")) return "relationship building";
+  if (input.includes("confidence")) return "building confidence";
+  if (input.includes("style") || input.includes("fashion")) return "improving style";
+  return input;
 }
 
 // Function to get gender-specific system prompt
@@ -380,6 +419,16 @@ exports.handleChat = async (req, res) => {
       recentMessages = [{ role: 'user', content: message }];
     }
     
+    // Load user memory and create memory summary
+    const memory = getUserMemory(userId);
+    const memorySummary = `
+Here's what Jules remembers about this user:
+- Style Preferences: ${memory.stylePreferences.join(", ") || "N/A"}
+- Emotional Notes: ${memory.emotionalNotes.join(", ") || "N/A"}
+- Product History: ${memory.productHistory.join(", ") || "N/A"}
+- Goals: ${memory.goals.join(", ") || "N/A"}
+`;
+
     // Jules's authentic personality - using gender-specific context
     // For emotional support intent, ensure no product recommendations are given
     let systemPrompt = getSystemPrompt(userGender);
@@ -389,7 +438,7 @@ exports.handleChat = async (req, res) => {
     }
     
     const messages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: memorySummary + "\n\n" + systemPrompt },
       ...recentMessages
     ];
     
@@ -421,6 +470,22 @@ exports.handleChat = async (req, res) => {
       temperature: 0.1,
     });
     const reply = completion.choices[0].message.content;
+    
+    // Update user memory based on intent
+    switch (intent) {
+      case "style_advice":
+        updateUserMemory(userId, { stylePreferences: extractStyle(message) });
+        break;
+      case "emotional_support":
+        updateUserMemory(userId, { emotionalNotes: extractEmotion(message) });
+        break;
+      case "product_request":
+        updateUserMemory(userId, { productHistory: extractProducts(message) });
+        break;
+      case "dating_advice":
+        updateUserMemory(userId, { goals: extractGoals(message) });
+        break;
+    }
     
     // Debug: Log response length to see if it's being truncated
     console.log('DEBUG: Response length:', reply.length);
