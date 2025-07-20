@@ -4,7 +4,7 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const axios = require('axios');
 const mongoose = require('mongoose');
-const { getUserMemory, updateUserMemory } = require('../utils/userMemoryStore');
+const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary } = require('../utils/userMemoryStore');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -33,40 +33,88 @@ function classifyIntent(input) {
 
 // Memory extraction functions
 function extractStyle(input) {
-  if (input.includes("casual")) return "casual";
-  if (input.includes("streetwear")) return "streetwear";
-  if (input.includes("formal") || input.includes("business")) return "formal";
-  if (input.includes("athletic") || input.includes("workout")) return "athletic";
-  if (input.includes("minimalist") || input.includes("simple")) return "minimalist";
-  return "unspecified";
+  const styleKeywords = {
+    casual: ["casual", "relaxed", "comfortable", "everyday", "laid-back"],
+    streetwear: ["streetwear", "street", "urban", "hip-hop", "sneakerhead"],
+    formal: ["formal", "business", "professional", "suit", "dress", "office"],
+    athletic: ["athletic", "workout", "gym", "sports", "active", "fitness"],
+    minimalist: ["minimalist", "simple", "clean", "basic", "essential"],
+    vintage: ["vintage", "retro", "classic", "throwback", "old-school"],
+    luxury: ["luxury", "premium", "high-end", "designer", "expensive"],
+    outdoor: ["outdoor", "hiking", "camping", "adventure", "outdoorsy"]
+  };
+  
+  const inputLower = input.toLowerCase();
+  for (const [style, keywords] of Object.entries(styleKeywords)) {
+    if (keywords.some(keyword => inputLower.includes(keyword))) {
+      return style;
+    }
+  }
+  return "general";
 }
 
 function extractEmotion(input) {
-  if (input.includes("ghosted")) return "felt ghosted";
-  if (input.includes("rejected")) return "experienced rejection";
-  if (input.includes("lonely") || input.includes("alone")) return "feeling lonely";
-  if (input.includes("confident") || input.includes("confident")) return "seeking confidence";
-  if (input.includes("nervous") || input.includes("anxious")) return "feeling anxious";
-  return "general frustration";
+  const emotionKeywords = {
+    "felt ghosted": ["ghosted", "ignored", "no response", "disappeared"],
+    "experienced rejection": ["rejected", "turned down", "said no", "not interested"],
+    "feeling lonely": ["lonely", "alone", "isolated", "single", "by myself"],
+    "seeking confidence": ["confident", "confidence", "self-assured", "sure of myself"],
+    "feeling anxious": ["nervous", "anxious", "worried", "stressed", "overthinking"],
+    "feeling hurt": ["hurt", "pain", "sad", "upset", "disappointed"],
+    "feeling excited": ["excited", "thrilled", "pumped", "stoked", "happy"],
+    "feeling frustrated": ["frustrated", "annoyed", "irritated", "angry", "mad"]
+  };
+  
+  const inputLower = input.toLowerCase();
+  for (const [emotion, keywords] of Object.entries(emotionKeywords)) {
+    if (keywords.some(keyword => inputLower.includes(keyword))) {
+      return emotion;
+    }
+  }
+  return "general emotional state";
 }
 
 function extractProducts(input) {
-  // Extract product mentions from input
-  const products = [];
-  const productKeywords = /(shoes|boots|sneakers|shirt|tee|jeans|pants|jacket|blazer|suit|tie|belt|watch|accessory)/gi;
-  const matches = input.match(productKeywords);
-  if (matches) {
-    products.push(...matches);
+  const productKeywords = [
+    "shoes", "boots", "sneakers", "loafers", "oxfords", "derbies",
+    "shirt", "tee", "t-shirt", "polo", "henley", "sweater", "hoodie",
+    "jeans", "pants", "chinos", "shorts", "joggers", "sweatpants",
+    "jacket", "blazer", "suit", "coat", "vest", "waistcoat",
+    "tie", "belt", "watch", "accessory", "jewelry", "bag", "backpack"
+  ];
+  
+  const inputLower = input.toLowerCase();
+  const foundProducts = productKeywords.filter(product => inputLower.includes(product));
+  
+  if (foundProducts.length > 0) {
+    return foundProducts.join(", ");
   }
-  return products.length > 0 ? products.join(", ") : input;
+  
+  // If no specific products found, extract general clothing terms
+  const generalTerms = ["clothing", "outfit", "dress", "wear", "fashion"];
+  const foundTerms = generalTerms.filter(term => inputLower.includes(term));
+  
+  return foundTerms.length > 0 ? foundTerms.join(", ") : "clothing interest";
 }
 
 function extractGoals(input) {
-  if (input.includes("first date")) return "first date preparation";
-  if (input.includes("relationship")) return "relationship building";
-  if (input.includes("confidence")) return "building confidence";
-  if (input.includes("style") || input.includes("fashion")) return "improving style";
-  return input;
+  const goalKeywords = {
+    "first date preparation": ["first date", "first time meeting", "meeting someone"],
+    "relationship building": ["relationship", "dating", "long-term", "serious"],
+    "building confidence": ["confidence", "self-esteem", "self-assurance", "feel better"],
+    "improving style": ["style", "fashion", "look better", "dress better", "upgrade"],
+    "career advancement": ["job", "career", "work", "professional", "interview"],
+    "social skills": ["social", "meet people", "friends", "networking", "conversation"],
+    "fitness goals": ["fitness", "workout", "gym", "health", "exercise"]
+  };
+  
+  const inputLower = input.toLowerCase();
+  for (const [goal, keywords] of Object.entries(goalKeywords)) {
+    if (keywords.some(keyword => inputLower.includes(keyword))) {
+      return goal;
+    }
+  }
+  return "personal development";
 }
 
 // Function to get gender-specific system prompt
@@ -306,11 +354,32 @@ function stripClosers(text) {
 
 // Handle chat requests
 exports.handleChat = async (req, res) => {
-  const { message, userId } = req.body;
-  console.log('DEBUG: handleChat called. Incoming message:', message, 'userId:', userId);
-  if (!message || !userId) {
-    return res.status(400).json({ error: 'Message and userId are required.' });
+  const { message } = req.body;
+  
+  console.log('DEBUG: handleChat called. Incoming message:', message);
+  
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required.' });
   }
+  
+  let userId;
+  
+  // Auth0 user ID (production or dev if logged in)
+  if (req.user?.sub) {
+    userId = req.user.sub;
+  } else {
+    const host = req.headers.host || '';
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+    
+    if (isLocalhost) {
+      userId = 'test_user';
+      console.warn("⚠️ Using test_user for local development. No persistent memory.");
+    } else {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+  }
+  
+  console.log(`✅ Using user ID: ${userId}`);
 
   // Check for gender context in the current message
   const detectedGender = detectGenderContext(message);
@@ -419,14 +488,19 @@ exports.handleChat = async (req, res) => {
       recentMessages = [{ role: 'user', content: message }];
     }
     
-    // Load user memory and create memory summary
-    const memory = getUserMemory(userId);
-    const memorySummary = `
-Here's what Jules remembers about this user:
-- Style Preferences: ${memory.stylePreferences.join(", ") || "N/A"}
-- Emotional Notes: ${memory.emotionalNotes.join(", ") || "N/A"}
-- Product History: ${memory.productHistory.join(", ") || "N/A"}
-- Goals: ${memory.goals.join(", ") || "N/A"}
+    // Load user memory and create enhanced memory summary with tone profile
+    const tone = getToneProfile(userId);
+    const memorySummary = getMemorySummary(userId);
+    const recentMemorySummary = getRecentMemorySummary(userId, 7); // Last 7 days
+    
+    const enhancedMemoryContext = `
+TONE: ${tone}
+
+LONG-TERM MEMORY:
+${memorySummary}
+
+RECENT MEMORY (Last 7 days):
+${recentMemorySummary}
 `;
 
     // Jules's authentic personality - using gender-specific context
@@ -438,7 +512,7 @@ Here's what Jules remembers about this user:
     }
     
     const messages = [
-      { role: 'system', content: memorySummary + "\n\n" + systemPrompt },
+      { role: 'system', content: enhancedMemoryContext + "\n\n" + systemPrompt },
       ...recentMessages
     ];
     
@@ -471,20 +545,40 @@ Here's what Jules remembers about this user:
     });
     const reply = completion.choices[0].message.content;
     
-    // Update user memory based on intent
+    // Update user memory based on intent with enhanced extraction
+    const extractedData = {};
+    
     switch (intent) {
       case "style_advice":
-        updateUserMemory(userId, { stylePreferences: extractStyle(message) });
+        const style = extractStyle(message);
+        if (style !== "general") {
+          extractedData.stylePreferences = style;
+        }
         break;
       case "emotional_support":
-        updateUserMemory(userId, { emotionalNotes: extractEmotion(message) });
+        const emotion = extractEmotion(message);
+        if (emotion !== "general emotional state") {
+          extractedData.emotionalNotes = emotion;
+        }
         break;
       case "product_request":
-        updateUserMemory(userId, { productHistory: extractProducts(message) });
+        const products = extractProducts(message);
+        if (products !== "clothing interest") {
+          extractedData.productHistory = products;
+        }
         break;
       case "dating_advice":
-        updateUserMemory(userId, { goals: extractGoals(message) });
+        const goal = extractGoals(message);
+        if (goal !== "personal development") {
+          extractedData.goals = goal;
+        }
         break;
+    }
+    
+    // Only update memory if we extracted meaningful data
+    if (Object.keys(extractedData).length > 0) {
+      updateUserMemory(userId, extractedData);
+      console.log('DEBUG: Updated user memory with:', extractedData);
     }
     
     // Debug: Log response length to see if it's being truncated

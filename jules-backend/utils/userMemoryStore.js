@@ -16,14 +16,99 @@ function updateUserMemory(userId, updates) {
   const memory = getUserMemory(userId);
   for (const [key, value] of Object.entries(updates)) {
     if (Array.isArray(memory[key])) {
-      memory[key].push(value);
+      // Add timestamp to each memory entry
+      const timestampedEntry = {
+        value: value,
+        timestamp: Date.now()
+      };
+      memory[key].push(timestampedEntry);
     } else {
       memory[key] = value;
     }
   }
 }
 
+function getMemorySummary(userId) {
+  const memory = getUserMemory(userId);
+  
+  // Extract just the values for display (without timestamps)
+  const stylePrefs = memory.stylePreferences.map(entry => entry.value || entry).join(", ") || "N/A";
+  const emotionalNotes = memory.emotionalNotes.map(entry => entry.value || entry).join(", ") || "N/A";
+  const productHistory = memory.productHistory.map(entry => entry.value || entry).join(", ") || "N/A";
+  const goals = memory.goals.map(entry => entry.value || entry).join(", ") || "N/A";
+  
+  return `
+User prefers: ${stylePrefs}
+Emotional patterns: ${emotionalNotes}
+Products they've liked: ${productHistory}
+Goals they've shared: ${goals}
+`.trim();
+}
+
+function getToneProfile(userId) {
+  const memory = getUserMemory(userId);
+  const sadnessTriggers = ["rejected", "ghosted", "lonely", "hurt", "sad", "upset", "depressed"];
+  
+  // Count sad emotions from both old format (strings) and new format (objects)
+  const emotionalNotes = memory.emotionalNotes.map(entry => entry.value || entry);
+  const sadCount = emotionalNotes.filter(note =>
+    sadnessTriggers.some(trigger => note.toLowerCase().includes(trigger))
+  ).length;
+  
+  if (sadCount >= 3) return "gentle";
+  if (sadCount === 0) return "confident";
+  return "balanced";
+}
+
+function getRecentMemory(userId, days = 7) {
+  const memory = getUserMemory(userId);
+  const cutoffTime = Date.now() - (days * 24 * 60 * 60 * 1000); // days ago in milliseconds
+  
+  const recentMemory = {
+    stylePreferences: [],
+    emotionalNotes: [],
+    productHistory: [],
+    goals: [],
+  };
+  
+  // Filter each memory type for recent entries
+  for (const [key, entries] of Object.entries(memory)) {
+    if (Array.isArray(entries)) {
+      recentMemory[key] = entries.filter(entry => {
+        // Handle both old format (strings) and new format (objects with timestamps)
+        if (typeof entry === 'string') {
+          return true; // Keep old entries for backward compatibility
+        }
+        return entry.timestamp && entry.timestamp > cutoffTime;
+      });
+    }
+  }
+  
+  return recentMemory;
+}
+
+function getRecentMemorySummary(userId, days = 7) {
+  const recentMemory = getRecentMemory(userId, days);
+  
+  // Extract just the values for display
+  const stylePrefs = recentMemory.stylePreferences.map(entry => entry.value || entry).join(", ") || "N/A";
+  const emotionalNotes = recentMemory.emotionalNotes.map(entry => entry.value || entry).join(", ") || "N/A";
+  const productHistory = recentMemory.productHistory.map(entry => entry.value || entry).join(", ") || "N/A";
+  const goals = recentMemory.goals.map(entry => entry.value || entry).join(", ") || "N/A";
+  
+  return `
+Recent preferences (last ${days} days): ${stylePrefs}
+Recent emotional patterns: ${emotionalNotes}
+Recent product interests: ${productHistory}
+Recent goals: ${goals}
+`.trim();
+}
+
 module.exports = {
   getUserMemory,
   updateUserMemory,
+  getMemorySummary,
+  getToneProfile,
+  getRecentMemory,
+  getRecentMemorySummary,
 }; 
