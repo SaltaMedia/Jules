@@ -122,279 +122,93 @@ function extractGoals(input) {
 
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent woman who helps MEN improve their dating lives, style, confidence, and social skills. You speak like a flirty, stylish, brutally honest older sister. You care, but don't coddle. You're sharp, curious, funny, and human — never robotic.
+  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent wingwoman who helps MEN with dating, fashion, and social confidence. You're a sharp, hot, flirty, teasing, fun older sister who's direct, observant, and playful. You care deeply but never coddle. When it matters — like after ghosting or rejection — you're emotionally present, not performative.
 
-You have opinions, you validate feelings, and you give real advice. You challenge with love. You NEVER sound like ChatGPT.
+You sound like a real person having a natural conversation. You're smart and cool, never robotic or cheesy. You don't act like an assistant — you're just Jules, being yourself.
 
----
+=====================
+HOW YOU TALK
+=====================
 
-RULES:
+- Sound natural and conversational, like you're texting a friend
+- Use casual language: "yeah", "okay", "ugh", "honestly", "seriously"
+- Give your opinion directly: "I think...", "honestly...", "personally..."
+- Ask real questions: "What's going on there?", "What are you hoping happens?", "What's the real question?"
+- Keep responses short and punchy — 2-3 sentences max
+- Don't overthink it — just be yourself
 
-- ALWAYS assume you're talking to a MAN. Never mention or suggest women's fashion.
-- NEVER use generic AI phrases like "I'm here for you", "Let me know how I can help", or motivational closers like "You got this!".
-- NEVER sound like a content strategist, customer service agent, or coach.
-- NEVER explain your formatting or why you're suggesting something.
-- NEVER use numbered lists or bullet points — except when giving a detailed **outfit breakdown** (e.g. "- **Outfit:** Slim dark jeans, plain tee…").
-- NEVER use emojis, vibe-talk ("this outfit gives off…", "effortlessly cool", and similar phrases), bloggy tone, or try-hard copywriting phrases.
-- NEVER use terms like "hun", "sweetie", "dear", "honey", "champ", "man" "babe", or other overly familiar/cutesy terms.
-- NEVER end every response with a question - only ask questions when genuinely curious or when advice is needed.
-- NEVER overexplain. Be clear, bold, fast.
-- NEVER break character or refer to yourself as an AI unless explicitly asked.
-- NEVER use soft, generic responses like "I'm sorry to hear that" or "If you feel like talking about it, I'm here to listen."
-- ALWAYS be direct and specific. No vague, comforting platitudes.
+- NEVER say "I'm here for you," "I got you," "let me know if," "hope that helps," or anything customer-servicey
+- NEVER over-apologize or over-explain
+- NEVER use emojis or formal language
+- NEVER talk like ChatGPT ("As an AI...", "Based on your question..." etc.)
+- NEVER end with summaries or permission-seeking ("Does that help?", "Want me to...?")
 
----
+=====================
+FASHION GUIDANCE
+=====================
 
-WHEN GIVING PRODUCT RECOMMENDATIONS:
+- ONLY give MEN'S fashion advice.
+- Suggest timeless, masculine staples — well-fitted pieces only.
+- Prefer brands like: Buck Mason, Todd Snyder, Taylor Stitch, Aimé Leon Dore, Levi's, J.Crew, Uniqlo, Lululemon, Vans, Huckberry.
+- NEVER recommend fast fashion (Shein, Fashion Nova) or try-hard influencer trends.
+- NEVER describe the outfit's "vibe." Say what works and why.
 
-- ONLY give product links if the user **explicitly asks** for items, brands, or examples (e.g. "what boots should I buy?").
-- Make sure product cards or links are **directly relevant** to your advice.
-- DO NOT show product links during emotional support or general conversation.
+🛍️ **Product Rules**
+- Only show product cards IF the user asks for brands, items, or examples.
+- Products MUST match the advice in the conversation.
+- When nothing relevant is available, just say: "Nothing perfect right now, but I'll keep looking."
 
----
+=====================
+DATING & CONFIDENCE
+=====================
 
-EMOTIONAL SUPPORT MOMENTS:
+- When ghosting, rejection, or frustration comes up: NO outfit talk, NO jokes, just real empathy.
+- When the user's stuck or vague, ask: "What's the real question?" or "What are you hoping happens?"
+- When appropriate, suggest taking action: swipe, lift, make plans, etc.
+- NEVER lecture. Say the smart, sharp thing a hot friend would.
 
-- If a user shares pain, ghosting, insecurity, loneliness, etc., STOP giving style tips.
-- Shift into full **emotional support** mode: validate, listen, ask one honest follow-up.
-- Sound like a real friend. No fashion talk unless they pivot back.
-- Be direct and honest, not soft and comforting.
+=====================
+YOUR DEFAULT SETTING
+=====================
 
----
-
-TONE + PERSONALITY:
-
-- Direct, smart, warm, observant. You're a woman with taste and life experience.
-- Ask personal follow-ups: "What's going on there?", "What do you usually wear to stuff like that?", "How are you actually feeling about that?"
-- Use natural human language: "ugh", "nah", "honestly", "that sucks"
-- Be flirty or playful when appropriate, but never cringey or cartoonish.
-- Be confident and direct, not apologetic or overly supportive.
-
----
-
-EXAMPLES:
-
-Good: "Ghosting sucks. You didn't do anything wrong — he just didn't have the backbone to be clear. Don't chase. Text one line if you need to, then move on. Want help drafting it?"
-
-Good: "Go with slim jeans, plain tee, and a suede jacket — charcoal, navy, or brown. Clean boots or white sneakers. You'll look pulled together without trying too hard."
-
-Good: "Tell me how you'd normally dress for this — I'll help you upgrade without feeling like a costume."
-
-Good: "That's brutal. Three dates in and she just vanished? She's either got issues or met someone else. Either way, not your problem anymore."
-
----
-
-You are NOT an assistant. You are a friend with exceptional taste and insight. Always sound like Jules — the cool older sister who actually gives a damn.`;
+When unsure: prioritize brevity, taste, and boldness. Better to be sharp than neutral. If something sucks, say it sucks. If something's great, say it's great. Be the friend who tells the truth with love.`;
 
   return basePrompt;
 }
 
-// Strip only specific closers at the end of the text, preserve natural tone
+// Simple closer stripping - only remove the most obvious bad closers
 function stripClosers(text) {
   if (!text) return text;
   
   let result = text;
   
-  // Only remove specific closers at the very end of the text
-  // Made patterns more specific and conservative to prevent truncation
-  const endCloserPatterns = [
-    // Very specific closing phrases only
-    /\b(?:Keep it cool,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it effortless,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it stylish,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it casual,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it simple,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it real,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it fresh,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it clean,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it sharp,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Keep it classy,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Rock it,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Own it,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Crush it,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Kill it,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Slay it,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Nail it,?\s*man!?)\s*[.!?]*$/i,
-    /\b(?:Let me know if you need anything)\s*[.!?]*$/i,
-    /\b(?:Hope (?:that|this) helps)\s*[.!?]*$/i,
-    /\b(?:You're all set)\s*[.!?]*$/i,
-    /\b(?:Keep bringing the style questions)\s*[.!?]*$/i,
-    /\b(?:I'll keep dishing out the style solutions)\s*[.!?]*$/i,
-    /\b(?:Rock it with confidence)\s*[.!?]*$/i,
-    /\b(?:effortlessly cool)\s*[.!?]*$/i,
-    /\b(?:level up your style game)\s*[.!?]*$/i,
-    /\b(?:my friend)\s*[.!?]*$/i,
-    /\b(?:Just say the word)\s*[.!?]*$/i,
-    /\b(?:I've got you covered)\s*[.!?]*$/i,
-    /\b(?:Let's do this)\s*[.!?]*$/i,
-    /\b(?:Treat yourself to a pair)\s*[.!?]*$/i,
-    /\b(?:up your workout game)\s*[.!?]*$/i,
-    /\b(?:If you need more, just ask)\s*[.!?]*$/i,
-    /\b(?:I'm always here)\s*[.!?]*$/i,
-    /\b(?:Let's keep going)\s*[.!?]*$/i,
+  // Only remove the most obvious bad closers at the end
+  const badClosers = [
     /\b(?:You got this|You've got this)\s*[.!?]*$/i,
-    /\b(?:Showtime baby)\s*[.!?]*$/i,
-    /\b(?:charisma is irresistible)\s*[.!?]*$/i,
-    /\b(?:I'm just a message away)\s*[.!?]*$/i,
-    /\b(?:I'm here whenever you need)\s*[.!?]*$/i,
-    /\b(?:Let's keep the style rolling)\s*[.!?]*$/i,
-    /\b(?:I'm always ready to help)\s*[.!?]*$/i,
-    /\b(?:Ready to help you)\s*[.!?]*$/i,
-    /\b(?:I'm here to help)\s*[.!?]*$/i,
-    /\b(?:Let's dial up your cool factor)\s*[.!?]*$/i,
-    /\b(?:what's on your mind next)\s*[.!?]*$/i,
-    /\b(?:I'm here to chat)\s*[.!?]*$/i,
-    /\b(?:let me know how I can help)\s*[.!?]*$/i,
-    /\b(?:feel free to let me know)\s*[.!?]*$/i,
-    /\b(?:just let me know)\s*[.!?]*$/i,
-    /\b(?:so what's on your mind)\s*[.!?]*$/i,
-    /\b(?:what's next)\s*[.!?]*$/i,
-    /\b(?:anything else)\s*[.!?]*$/i,
-    /\b(?:need anything else)\s*[.!?]*$/i,
-    /\b(?:want anything else)\s*[.!?]*$/i,
-    /\b(?:can I help with anything else)\s*[.!?]*$/i,
-    /\b(?:any other questions)\s*[.!?]*$/i,
-    /\b(?:other questions)\s*[.!?]*$/i,
-    /\b(?:more questions)\s*[.!?]*$/i,
-    /\b(?:any more questions)\s*[.!?]*$/i,
-    /\b(?:got any other questions)\s*[.!?]*$/i,
-    /\b(?:have any other questions)\s*[.!?]*$/i,
-    /\b(?:any other style questions)\s*[.!?]*$/i,
-    /\b(?:other style questions)\s*[.!?]*$/i,
-    /\b(?:more style questions)\s*[.!?]*$/i,
-    /\b(?:any more style questions)\s*[.!?]*$/i,
-    /\b(?:got any other style questions)\s*[.!?]*$/i,
-    /\b(?:have any other style questions)\s*[.!?]*$/i,
-    /\b(?:Have a fantastic time)\s*[.!?]*$/i,
-    /\b(?:Enjoy getting creative)\s*[.!?]*$/i,
-    /\b(?:Cheers to)\s*[.!?]*$/i,
-    /\b(?:Have a blast)\s*[.!?]*$/i,
-    /\b(?:Enjoy your)\s*[.!?]*$/i,
-    /\b(?:Have fun)\s*[.!?]*$/i,
-    /\b(?:Get out there)\s*[.!?]*$/i,
-    /\b(?:You're sure to)\s*[.!?]*$/i,
-    /\b(?:You'll make connections)\s*[.!?]*$/i,
-    /\b(?:Enjoy the scene)\s*[.!?]*$/i,
-    /\b(?:Enjoy exploring)\s*[.!?]*$/i,
-    /\b(?:Enjoy soaking up)\s*[.!?]*$/i,
-    /\b(?:Enjoy unleashing)\s*[.!?]*$/i,
-    /\b(?:Enjoy creating)\s*[.!?]*$/i,
-    /\b(?:Enjoy socializing)\s*[.!?]*$/i,
-    /\b(?:Enjoy getting your art on)\s*[.!?]*$/i,
-    /\b(?:Enjoy getting your creativity flowing)\s*[.!?]*$/i,
-    /\b(?:I'm here to help you out with anything you need)\s*[.!?]*$/i,
-    /\b(?:Have a fantastic time on your date)\s*[.!?]*$/i,
-    /\b(?:What's on your mind today\? How can I help you out)\s*[.!?]*$/i,
-    /\b(?:How can I help you out)\s*[.!?]*$/i,
-    /\b(?:feel free to let me know)\s*[.!?]*$/i,
-    /\b(?:let me know if you need anything)\s*[.!?]*$/i,
     /\b(?:I'm here to help)\s*[.!?]*$/i,
     /\b(?:I'm here for you)\s*[.!?]*$/i,
-    /\b(?:You got this|You've got this)\s*[.!?]*$/i,
-    /\b(?:need anything else)\s*[.!?]*$/i,
-    /\b(?:want anything else)\s*[.!?]*$/i,
-    /\b(?:anything else)\s*[.!?]*$/i,
-    /\b(?:got any more questions)\s*[.!?]*$/i,
-    /\b(?:have any more questions)\s*[.!?]*$/i,
-    /\b(?:any more questions)\s*[.!?]*$/i,
-    /\b(?:more questions)\s*[.!?]*$/i,
-    /\b(?:other questions)\s*[.!?]*$/i,
-    /\b(?:any other questions)\s*[.!?]*$/i,
-    /\b(?:what's next)\s*[.!?]*$/i,
-    /\b(?:so what's on your mind)\s*[.!?]*$/i,
-    /\b(?:just let me know)\s*[.!?]*$/i,
-    /\b(?:I'm here to chat)\s*[.!?]*$/i,
+    /\b(?:let me know how I can help)\s*[.!?]*$/i,
+    /\b(?:feel free to let me know)\s*[.!?]*$/i,
     /\b(?:what's on your mind next)\s*[.!?]*$/i,
-    /\b(?:Let's dial up your cool factor)\s*[.!?]*$/i,
-    /\b(?:Ready to help you)\s*[.!?]*$/i,
-    /\b(?:I'm always ready to help)\s*[.!?]*$/i,
-    /\b(?:Let's keep the style rolling)\s*[.!?]*$/i,
-    /\b(?:I'm here whenever you need)\s*[.!?]*$/i,
-    /\b(?:I'm just a message away)\s*[.!?]*$/i,
-    /\b(?:charisma is irresistible)\s*[.!?]*$/i,
-    /\b(?:Showtime baby)\s*[.!?]*$/i,
-    /\b(?:Let's keep going)\s*[.!?]*$/i,
-    /\b(?:I'm always here)\s*[.!?]*$/i,
-    /\b(?:If you need more, just ask)\s*[.!?]*$/i,
-    /\b(?:up your workout game)\s*[.!?]*$/i,
-    /\b(?:Treat yourself to a pair)\s*[.!?]*$/i,
-    /\b(?:Let's do this)\s*[.!?]*$/i,
-    /\b(?:I've got you covered)\s*[.!?]*$/i,
-    /\b(?:Just say the word)\s*[.!?]*$/i,
-    /\b(?:my friend)\s*[.!?]*$/i,
-    /\b(?:level up your style game)\s*[.!?]*$/i,
-    /\b(?:effortlessly cool)\s*[.!?]*$/i,
-    /\b(?:Rock it with confidence)\s*[.!?]*$/i,
-    /\b(?:I'll keep dishing out the style solutions)\s*[.!?]*$/i,
-    /\b(?:Keep bringing the style questions)\s*[.!?]*$/i,
-    /\b(?:You're all set)\s*[.!?]*$/i,
-    /\b(?:Hope (?:that|this) helps)\s*[.!?]*$/i,
-    /\b(?:Let me know if you need anything)\s*[.!?]*$/i,
-    /\b(?:Enjoy upgrading your\s+\w+\s+game!?)\s*[.!?]*$/i,
-    /\b(?:Enjoy\s+\w+ing\s+your\s+\w+\s+game!?)\s*[.!?]*$/i,
-    /\b(?:Enjoy\s+\w+ing\s+your\s+\w+!?)\s*[.!?]*$/i,
+    /\b(?:anything else)\s*[.!?]*$/i,
+    /\b(?:any other questions)\s*[.!?]*$/i,
+    /\b(?:Have a fantastic time)\s*[.!?]*$/i,
+    /\b(?:Enjoy your\s+\w+)\s*[.!?]*$/i,
     /\b(?:Keep it easy-breezy)\s*[.!?]*$/i,
     /\b(?:Keep it breezy)\s*[.!?]*$/i,
-    /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i,
-    /\b(?:Enjoy the party)\s*[.!?]*$/i,
-    /\b(?:Enjoy your\s+\w+)\s*[.!?]*$/i
+    /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i
   ];
   
-  // Track original length for safety
-  const originalLength = result.length;
-  let totalRemoved = 0;
-  
-  // Only apply patterns that match at the end of the text
-  endCloserPatterns.forEach(pattern => {
-    if (pattern.test(result)) {
-      const beforeLength = result.length;
-      result = result.replace(pattern, '').trim();
-      const afterLength = result.length;
-      totalRemoved += (beforeLength - afterLength);
-      
-      // Safety check: don't remove more than 20% of the original text
-      if (totalRemoved > originalLength * 0.2) {
-        console.log('DEBUG: stripClosers safety check triggered - too much content removed, reverting');
-        return text; // Return original text if too much was removed
-      }
-    }
+  // Remove bad closers at the end
+  badClosers.forEach(pattern => {
+    result = result.replace(pattern, '').trim();
   });
   
+  // Remove "my man" phrases (but not standalone "man")
+  result = result.replace(/\bmy\s+man\b/gi, '');
+  result = result.replace(/,\s*my\s+man\b/gi, '');
+  
   // Clean up extra whitespace
-  result = result.replace(/\n\s*\n/g, '\n'); // Remove extra line breaks
-  result = result.replace(/\s+/g, ' '); // Normalize whitespace
-  result = result.trim();
-  
-  // Don't truncate if the result is too short - this prevents cutting off valid responses
-  if (result.length < originalLength * 0.5) {
-    console.log('DEBUG: stripClosers - result too short, returning original text');
-    return text; // Return original if stripping made it too short
-  }
-  
-  // Additional safety: don't return empty or very short responses
-  if (result.length < 10) {
-    console.log('DEBUG: stripClosers - result too short, returning original text');
-    return text;
-  }
-  
-  console.log(`DEBUG: stripClosers - original: ${originalLength} chars, result: ${result.length} chars, removed: ${totalRemoved} chars`);
-  
-  // Remove "man" references throughout the text
-  result = result.replace(/\bman\b/gi, '');
-  result = result.replace(/\s*,\s*man\s*[.!?]/gi, '$1');
-  result = result.replace(/\s*man\s*[.!?]/gi, '$1');
-  result = result.replace(/\s*,\s*man$/gi, '');
-  result = result.replace(/\s*man$/gi, '');
-  
-  // Remove common bad closers anywhere in the text (not just at end)
-  result = result.replace(/\bKeep it easy-breezy\b/gi, '');
-  result = result.replace(/\bKeep it breezy\b/gi, '');
-  result = result.replace(/\bEnjoy putting together your\s+\w+\s+\w+!?\b/gi, '');
-  result = result.replace(/\bEnjoy the party\b/gi, '');
-  result = result.replace(/\bEnjoy your\s+\w+\b/gi, '');
-  
-  // Clean up any double punctuation that might result
-  result = result.replace(/[.!?]{2,}/g, '.');
   result = result.replace(/\s+/g, ' ').trim();
   
   return result;
@@ -415,13 +229,9 @@ exports.handleChat = async (req, res) => {
   
   let userId;
   
-  // Check for authenticated user (JWT token or Auth0)
+  // Auth0 user ID (production or dev if logged in)
   if (req.user?.sub) {
-    // Auth0 user ID
     userId = req.user.sub;
-  } else if (req.user?.userId) {
-    // JWT token user ID (from Google OAuth)
-    userId = req.user.userId;
   } else {
     const host = req.headers.host || '';
     const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
