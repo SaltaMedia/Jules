@@ -135,8 +135,8 @@ RULES:
 - NEVER sound like a content strategist, customer service agent, or coach.
 - NEVER explain your formatting or why you're suggesting something.
 - NEVER use numbered lists or bullet points — except when giving a detailed **outfit breakdown** (e.g. "- **Outfit:** Slim dark jeans, plain tee…").
-- NEVER use emojis, vibe-talk ("this outfit gives off…"), bloggy tone, or try-hard copywriting phrases.
-- NEVER use terms like "hun", "sweetie", "dear", or other overly familiar/cutesy terms.
+- NEVER use emojis, vibe-talk ("this outfit gives off…", "effortlessly cool", and similar phrases), bloggy tone, or try-hard copywriting phrases.
+- NEVER use terms like "hun", "sweetie", "dear", "honey", "champ", "man" "babe", or other overly familiar/cutesy terms.
 - NEVER end every response with a question - only ask questions when genuinely curious or when advice is needed.
 - NEVER overexplain. Be clear, bold, fast.
 - NEVER break character or refer to yourself as an AI unless explicitly asked.
@@ -199,6 +199,22 @@ function stripClosers(text) {
   // Made patterns more specific and conservative to prevent truncation
   const endCloserPatterns = [
     // Very specific closing phrases only
+    /\b(?:Keep it cool,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it effortless,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it stylish,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it casual,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it simple,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it real,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it fresh,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it clean,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it sharp,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Keep it classy,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Rock it,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Own it,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Crush it,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Kill it,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Slay it,?\s*man!?)\s*[.!?]*$/i,
+    /\b(?:Nail it,?\s*man!?)\s*[.!?]*$/i,
     /\b(?:Let me know if you need anything)\s*[.!?]*$/i,
     /\b(?:Hope (?:that|this) helps)\s*[.!?]*$/i,
     /\b(?:You're all set)\s*[.!?]*$/i,
@@ -313,7 +329,15 @@ function stripClosers(text) {
     /\b(?:Keep bringing the style questions)\s*[.!?]*$/i,
     /\b(?:You're all set)\s*[.!?]*$/i,
     /\b(?:Hope (?:that|this) helps)\s*[.!?]*$/i,
-    /\b(?:Let me know if you need anything)\s*[.!?]*$/i
+    /\b(?:Let me know if you need anything)\s*[.!?]*$/i,
+    /\b(?:Enjoy upgrading your\s+\w+\s+game!?)\s*[.!?]*$/i,
+    /\b(?:Enjoy\s+\w+ing\s+your\s+\w+\s+game!?)\s*[.!?]*$/i,
+    /\b(?:Enjoy\s+\w+ing\s+your\s+\w+!?)\s*[.!?]*$/i,
+    /\b(?:Keep it easy-breezy)\s*[.!?]*$/i,
+    /\b(?:Keep it breezy)\s*[.!?]*$/i,
+    /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i,
+    /\b(?:Enjoy the party)\s*[.!?]*$/i,
+    /\b(?:Enjoy your\s+\w+)\s*[.!?]*$/i
   ];
   
   // Track original length for safety
@@ -355,6 +379,24 @@ function stripClosers(text) {
   
   console.log(`DEBUG: stripClosers - original: ${originalLength} chars, result: ${result.length} chars, removed: ${totalRemoved} chars`);
   
+  // Remove "man" references throughout the text
+  result = result.replace(/\bman\b/gi, '');
+  result = result.replace(/\s*,\s*man\s*[.!?]/gi, '$1');
+  result = result.replace(/\s*man\s*[.!?]/gi, '$1');
+  result = result.replace(/\s*,\s*man$/gi, '');
+  result = result.replace(/\s*man$/gi, '');
+  
+  // Remove common bad closers anywhere in the text (not just at end)
+  result = result.replace(/\bKeep it easy-breezy\b/gi, '');
+  result = result.replace(/\bKeep it breezy\b/gi, '');
+  result = result.replace(/\bEnjoy putting together your\s+\w+\s+\w+!?\b/gi, '');
+  result = result.replace(/\bEnjoy the party\b/gi, '');
+  result = result.replace(/\bEnjoy your\s+\w+\b/gi, '');
+  
+  // Clean up any double punctuation that might result
+  result = result.replace(/[.!?]{2,}/g, '.');
+  result = result.replace(/\s+/g, ' ').trim();
+  
   return result;
 }
 
@@ -373,9 +415,13 @@ exports.handleChat = async (req, res) => {
   
   let userId;
   
-  // Auth0 user ID (production or dev if logged in)
+  // Check for authenticated user (JWT token or Auth0)
   if (req.user?.sub) {
+    // Auth0 user ID
     userId = req.user.sub;
+  } else if (req.user?.userId) {
+    // JWT token user ID (from Google OAuth)
+    userId = req.user.userId;
   } else {
     const host = req.headers.host || '';
     const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
@@ -580,13 +626,10 @@ ${recentMemorySummary}
 `;
 
     // === SYSTEM PROMPT WITH PERSONALITY AND CONTEXT ===
-    let systemPrompt = `You're Jules — a sharp, stylish, emotionally intelligent virtual big sister who helps men show up better in real life. Your tone is warm but direct. You're here to give confident, clear advice across dating, style, and self-confidence — no rambling, no dodging, no "wyd lol" small talk.
-
-Be punchy and helpful. Be clear and kind. You don't sugarcoat things — you help users figure out what matters, and you take a stand. You're not afraid to be bold, but you read the room. Use humor, sarcasm, and empathy when it helps.
-
-Tone should match user mood: if they're low, support them. If they're indecisive, push them. If they're being vague, ask for real talk — but gently.
-
-Keep it stylish. Keep it cool. Keep it honest.
+    let systemPrompt = getSystemPrompt(userGender);
+    
+    // Add conversation context and memory
+    systemPrompt += `
 
 Conversation so far:
 ${convoHistory}
@@ -615,7 +658,7 @@ ${enhancedMemoryContext}`;
     } else if (isAdviceQuestion) {
       maxTokens = 3000; // Reduced for complex advice to stay within limits
     } else if (isProductRequestType) {
-      maxTokens = 2000; // Reduced for product recommendations
+      maxTokens = 3000; // Increased to match advice questions for better personality
     } else if (messageCount > 10) {
       maxTokens = 3000; // Reduced for deep conversations
     } else {
