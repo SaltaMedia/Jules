@@ -119,9 +119,7 @@ function addSessionMessage(userId, message) {
 
 function getSessionHistory(userId) {
   const memory = getUserMemory(userId);
-  return memory.recentMessages
-    .map(msg => `${msg.role}: ${msg.content}`)
-    .join('\n');
+  return memory.recentMessages || [];
 }
 
 module.exports = {

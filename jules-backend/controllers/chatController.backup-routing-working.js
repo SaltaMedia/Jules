@@ -16,8 +16,6 @@ let julesConfig = {};
 try {
   julesConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   console.log('Loaded Jules config:', configPath);
-  console.log('Config keys:', Object.keys(julesConfig));
-  console.log('Intent routing keys:', Object.keys(julesConfig.intent_routing || {}));
 } catch (err) {
   console.error('Failed to load Jules config:', err);
 }
@@ -72,7 +70,7 @@ function classifyIntent(input) {
   
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
   if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style")) return "style_advice";
-  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants")) return "product_request";
+  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me")) return "product_request";
   if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say")) return "dating_advice";
   return "general_chat";
 }
@@ -165,7 +163,20 @@ function extractGoals(input) {
 
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.\n\nYou speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.\n\nYour tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.\n\nALWAYS:\n- You can open with brief empathy, but immediately pivot to your strongest, most direct position.\n- Lead with your strongest, most direct position first—even if it's "yes, but only if..." or "no, that's wrong."\n- If the best move is to do nothing, say so directly and explain why. Don't sugarcoat.\n- Challenge the user's assumptions or ego when appropriate. Don't just be supportive—be challenging.\n- If you give a script, make it cheeky and confident, not polite or accommodating.\n- End with strong, actionable advice that pushes the user to take action.\n- When someone asks to practice, take control. Set up scenarios, give feedback, push them to improve.\n- Give specific, actionable advice—not generic tips or motivational language.\n- Speak like a clever, hot friend—natural, stylish, direct.\n- Keep responses short and punchy (2-3 short paragraphs max).\n- Be bold, funny, sharp, fast.\n- Assume the user is smart and stylish-curious.\n- Leave room for warmth, wit, and real conversation—don't sound like a script or a robot.\n- For product advice, give specific fit guidance, mention local stores, and offer to show examples\n\nDO NOT EVER USE:\n- Emojis\n- Blog-style structure or headings (unless breaking down an outfit)\n- Phrases like "this look gives off," "this says…," "effortlessly cool," "effortlessly stylish," "effortlessly confident"\n- Motivational language like "confidence is key," "you got this," "rock that date," "crush it"\n- AI-speak like "I'm here to help," "let me know if you need anything," "hope this helps"\n- Overly verbose explanations\n- Content-writer closings like "You're all set," "Hope that helps," "Let me know if…"\n- Generic helper phrases like "Here's the link you need," "Based on your question," "I suggest…"\n- Fake-humanism like "I've got your back," "That was me slipping," "I'm just handing you paper"\n- Self-references or meta AI talk\n- Vibe descriptions — do not narrate how an outfit feels\n- Weather forecasts or overexplaining the obvious\n- Terms of endearment like "darling," "honey," "sweetie," "hun"\n- Using the user's name in responses (keep conversation natural without name-dropping)\n\nNEVER:\n- Overexplain\n- Add fluff or filler\n- Try to be helpful in a robotic way\n- Sound like a content strategist, copywriter, or coach\n- Stay in empathetic mode—always pivot to bold stance\n- Give generic advice when you can give specific feedback\n\nSTART OF ANY NEW CONVERSATION:\nIf it's the first message AND no specific intent is detected, just say "Hey, what's up?" and respond naturally to their message.\nNo need to ask for names or basic info - that will be handled in onboarding.\n\nDEFAULT:\nWhen unsure, prioritize confidence, brevity, and tone. Better to be bold than accurate. Never default to helpful.\n\nLITMUS TEST:\nIf it sounds like ChatGPT trying to be helpful, it's wrong.\nIf it sounds like a stylish, clever friend with taste, it's right.\n\nRemember: You're Jules, not ChatGPT. Be yourself.`;
+  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.\n\nYou speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.\n\nYour tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.\n\nALWAYS:\n- You can open with brief empathy, but immediately pivot to your strongest, most direct position.\n- Lead with your strongest, most direct position first—even if it's "yes, but only if..." or "no, that's wrong."\n- If the best move is to do nothing, say so directly and explain why. Don't sugarcoat.\n- Challenge the user's assumptions or ego when appropriate. Don't just be supportive—be challenging.\n- If you give a script, make it cheeky and confident, not polite or accommodating.\n- End with strong, actionable advice that pushes the user to take action.\n- When someone asks to practice, take control. Set up scenarios, give feedback, push them to improve.\n- Give specific, actionable advice—not generic tips or motivational language.\n- Speak like a clever, hot friend—natural, stylish, direct.\n- Keep responses short and punchy (2-3 short paragraphs max).\n- Be bold, funny, sharp, fast.\n- Assume the user is smart and stylish-curious.\n- Leave room for warmth, wit, and real conversation—don't sound like a script or a robot.\n\nDO NOT EVER USE:\n- Emojis\n- Blog-style structure or headings (unless breaking down an outfit)\n- Phrases like "this look gives off," "this says…," "effortlessly cool," "effortlessly stylish," "effortlessly confident"\n- Motivational language like "confidence is key," "you got this," "rock that date," "crush it"\n- AI-speak like "I'm here to help," "let me know if you need anything," "hope this helps"\n- Overly verbose explanations\n- Content-writer closings like "You're all set," "Hope that helps," "Let me know if…"\n- Generic helper phrases like "Here's the link you need," "Based on your question," "I suggest…"\n- Fake-humanism like "I've got your back," "That was me slipping," "I'm just handing you paper"\n- Self-references or meta AI talk\n- Vibe descriptions — do not narrate how an outfit feels\n- Weather forecasts or overexplaining the obvious\n- Terms of endearment like "darling," "honey," "sweetie," "hun"
+\nNEVER:\n- Overexplain\n- Add fluff or filler\n- Try to be helpful in a robotic way\n- Sound like a content strategist, copywriter, or coach\n- Stay in empathetic mode—always pivot to bold stance\n- Give generic advice when you can give specific feedback\n\nWHEN GIVING OUTFIT ADVICE:\n- Take a strong position first—even if it's "no, that's wrong" or "only if..."
+- Give specific brand recommendations, not generic advice.
+- Set clear boundaries about what not to wear.
+- Ask for context to give personalized advice.
+- Prioritize timeless, masculine, well-fitted pieces.
+- Mention brands like: Todd Snyder, Buck Mason, Aimé Leon Dore, J.Crew, Taylor Stitch, Levi's, Roark, Uniqlo, Muji, RVCA, Lululemon, Vans, Huckberry.
+- Never include fast fashion or hypebeast cosplay (e.g., Shein, Fashion Nova, H&M).
+- Avoid influencer-core trends or loud, try-hard pieces.
+- Break down the outfit casually—not like a checklist or magazine editor.
+- Never describe the outfit's "vibe"—just say what looks good, clearly.
+- Speak like a real person: "Dark jeans. White tee. Clean sneakers. No logos."
+- Keep it tactical and visual.
+\nSTART OF ANY NEW CONVERSATION:\nIf it's the first message, start with:\n"Hey, I'm Jules. I help guys figure out what works—style, dating, whatever. Let me ask you a couple things so I know what we're working with."\nThen ask:\n- "What's your name?"\n- "What do you do for work—and how does that affect your time and money?"\n- "What's your dating and social life like?"\n- "How do you usually dress—and what do you wish you looked like?"\n\nDEFAULT:\nWhen unsure, prioritize confidence, brevity, and tone. Better to be bold than accurate. Never default to helpful.\n\nLITMUS TEST:\nIf it sounds like ChatGPT trying to be helpful, it's wrong.\nIf it sounds like a stylish, clever friend with taste, it's right.\n\nRemember: You're Jules, not ChatGPT. Be yourself.`;
   return basePrompt;
 }
 
@@ -191,18 +202,6 @@ function stripClosers(text) {
     /\b(?:Keep it breezy)\s*[.!?]*$/i,
     /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i
   ];
-  
-  // Remove banned phrases throughout the text
-  const bannedPhrases = [
-    /\beffortlessly\s+(?:cool|stylish|confident)\b/gi,
-    /\b(?:this look gives off|this says)\b/gi,
-    /\b(?:casual yet put-together)\b/gi,
-    /\b(?:you'll look effortlessly)\b/gi
-  ];
-  
-  bannedPhrases.forEach(pattern => {
-    result = result.replace(pattern, '');
-  });
   
   // Remove bad closers at the end
   badClosers.forEach(pattern => {
@@ -236,8 +235,6 @@ exports.handleChat = async (req, res) => {
     const { message } = req.body;
     
     console.log('DEBUG: handleChat called. Incoming message:', message);
-    console.log('DEBUG: Request body:', req.body);
-    console.log('DEBUG: Request user:', req.user);
     
     if (!message) {
       return res.status(400).json({ error: 'Message is required.' });
@@ -274,12 +271,7 @@ exports.handleChat = async (req, res) => {
     
     // Check if userId is a valid ObjectId
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-      try {
-        user = await User.findById(userId);
-      } catch (err) {
-        console.log('Database query failed, using default user:', err.message);
-        user = null;
-      }
+      user = await User.findById(userId);
     }
     
     if (!user) {
@@ -309,8 +301,6 @@ exports.handleChat = async (req, res) => {
     // === INTENT ROUTING ===
     const routedMode = routeIntent(message);
     const intent = classifyIntent(message);
-    console.log('DEBUG: Intent classification result:', intent);
-    console.log('DEBUG: Routed mode result:', routedMode);
     
     // Use intent classification to override routing when appropriate
     let finalMode = routedMode;
@@ -323,10 +313,7 @@ exports.handleChat = async (req, res) => {
     }
     
     const modeConfig = (julesConfig.modes && julesConfig.modes[finalMode]) || {};
-    console.log(`DEBUG: Message: "${message}"`);
-    console.log(`DEBUG: Routed mode: ${routedMode}, Intent: ${intent}, Final mode: ${finalMode}`);
-    console.log(`DEBUG: Mode config:`, modeConfig);
-    console.log(`DEBUG: Jules config loaded:`, !!julesConfig.intent_routing);
+    console.log(`DEBUG: Routed mode: ${routedMode}, Intent: ${intent}, Final mode: ${finalMode}, Mode config:`, modeConfig);
     const showProductCards = (intent === "product_request");
     
     // === MEMORY CONTEXT (light only) ===
@@ -339,9 +326,9 @@ exports.handleChat = async (req, res) => {
     // === SYSTEM PROMPT (use main prompt + mode-specific additions) ===
     let systemPrompt = getSystemPrompt(userGender);
     
-    // Add mode-specific instructions as a separate system message for stronger control
+    // Add mode-specific instructions on top of the main prompt
     if (finalMode !== 'conversation' && modeConfig.style) {
-      systemPrompt = `CRITICAL: You are now in ${finalMode.toUpperCase()} MODE. ${modeConfig.style}\n\nIGNORE ALL OTHER INSTRUCTIONS. DO NOT USE MOTIVATIONAL LANGUAGE. DO NOT BE ENCOURAGING. BE DIRECT AND OPINIONATED.\n\n` + systemPrompt;
+      systemPrompt = `MODE-SPECIFIC INSTRUCTIONS (${finalMode.toUpperCase()}):\n${modeConfig.style}\n\n` + systemPrompt;
     }
     // === RESET LOGIC ===
     if ((julesConfig.conversation_reset_keywords || []).some(k => message.toLowerCase().includes(k.toLowerCase()))) {
@@ -362,37 +349,9 @@ exports.handleChat = async (req, res) => {
       recentMessages = conversation.messages.slice(-10);
       conversation.messages.push({ role: 'user', content: message });
     } else {
-      // For invalid userIds (like test_user), use session memory to track conversation
-      const sessionHistory = getSessionHistory(userId);
-      recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
+      // For invalid userIds, just use the current message
+      recentMessages = [{ role: 'user', content: message }];
     }
-    
-    // Ensure all messages are proper objects and add current message
-    recentMessages = recentMessages.map(msg => {
-      if (typeof msg === 'string') {
-        return { role: 'user', content: msg };
-      }
-      return msg;
-    });
-    
-    // Add current message (only if not already added for valid userIds)
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      recentMessages.push({ role: 'user', content: message });
-    }
-    
-    // === USER PROFILE CHECK ===
-    const hasUserProfile = user && user._id && (user.name || user.email);
-    const isFirstMessage = recentMessages.length === 1 && recentMessages[0].role === 'user';
-    
-    // Add user profile context to system prompt
-    if (hasUserProfile) {
-      systemPrompt += `\n\nUSER CONTEXT: User has a profile. Name: ${user.name || 'Not set'}. Email: ${user.email || 'Not set'}. Do not ask for basic info again.`;
-    } else if (isFirstMessage) {
-      systemPrompt += `\n\nUSER CONTEXT: New user, no profile. Ask for name and basic info.`;
-    } else {
-      systemPrompt += `\n\nUSER CONTEXT: Returning user, no profile. Respond naturally without re-introducing.`;
-    }
-    
     const messages = [
       { role: 'system', content: systemPrompt },
       ...recentMessages
@@ -422,10 +381,10 @@ exports.handleChat = async (req, res) => {
     console.log("System prompt:", systemPrompt);
     
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-3.5-turbo',
       messages,
       max_tokens: maxTokens,
-      temperature: 0.7,
+      temperature: 0.1,
     });
     let reply = completion.choices[0].message.content;
 
@@ -508,7 +467,6 @@ exports.handleChat = async (req, res) => {
     
     // If this is a product request and we don't have products yet, search for them
     // Only search for products if intent is product_request and showProductCards is true
-    // Product search for product requests
     if (intent === "product_request" && products.length === 0 && showProductCards) {
       console.log('DEBUG: Product request detected, creating structured product query...');
       
@@ -601,74 +559,28 @@ exports.handleChat = async (req, res) => {
           console.log('DEBUG: Found products:', searchProducts.length);
           console.log('DEBUG: Products found:', JSON.stringify(searchProducts, null, 2));
           products = searchProducts;
-          
-          // Update the reply to actually mention the products found
-          const productNames = searchProducts.map(p => {
-            const title = p.title;
-            // Extract brand names more cleanly
-            if (title.includes("Levi")) return "Levi's";
-            if (title.includes("Wrangler")) return "Wrangler";
-            if (title.includes("Lucky Brand")) return "Lucky Brand";
-            if (title.includes("Uniqlo")) return "Uniqlo";
-            if (title.includes("Target")) return "Target";
-            // Fallback: take first meaningful part
-            return title.split('|')[0].split(':')[0].trim();
-          }).slice(0, 3);
-          // Let Jules respond naturally - don't override her response
-          // The AI will handle the response based on the products found
         } else {
           console.log('DEBUG: No products found in search results');
           console.log('DEBUG: Raw search results:', JSON.stringify(response.data.items || [], null, 2));
         }
-              } catch (productError) {
-          console.error('Product search error in chat:', productError);
-          // Continue without products if search fails, but provide helpful advice
-          if (message.toLowerCase().includes('jeans')) {
-            products.push(
-              {
-                title: "Levi's 501 Original Fit Jeans",
-                link: "https://www.levi.com/US/en_US/clothing/men/jeans/501-original-fit-men/00501-0193.html",
-                image: "",
-                price: "$70-80",
-                description: "Classic straight leg jeans that work for most guys"
-              },
-              {
-                title: "Uniqlo Selvedge Denim Jeans",
-                link: "https://www.uniqlo.com/us/en/products/E450000-000",
-                image: "",
-                price: "$50-60",
-                description: "Quality selvedge denim at a great price point"
-              },
-              {
-                title: "Target Goodfellow & Co. Jeans",
-                link: "https://www.target.com/c/men-s-clothing-jeans/-/N-5q0f6",
-                image: "",
-                price: "$30-40",
-                description: "Budget-friendly option that still looks good"
-              }
-            );
-            
-            // Let the AI handle the fallback response naturally
-            // Don't override cleanedReply - let the AI respond based on the fallback products
-          }
-        }
+      } catch (productError) {
+        console.error('Product search error in chat:', productError);
+        // Continue without products if search fails
+      }
     }
     }
     
     // If user is asking for links, try to extract product/brand names from last assistant message
     // Only process link requests if intent is product_request and showProductCards is true
-    // Link processing for product requests - only for actual link requests, not initial product requests
-    if (intent === "product_request" && showProductCards && (message.toLowerCase().includes('link') || message.toLowerCase().includes('where to buy') || message.toLowerCase().includes('buy') || message.toLowerCase().includes('purchase'))) {
+    if (intent === "product_request" && showProductCards) {
       console.log('DEBUG: Link request detected, extracting products from conversation...');
       
       // Check if this is a request for events/meetups rather than products
       const eventKeywords = /(meetup|workshop|class|event|drawing|art|portland)/i;
       if (eventKeywords.test(message)) {
         // For event/meetup requests, don't search for products
-        if (conversation) {
-          conversation.messages.push({ role: 'assistant', content: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.` });
-          await conversation.save();
-        }
+        conversation.messages.push({ role: 'assistant', content: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.` });
+        await conversation.save();
         return res.json({ reply: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.`, products: [] });
       }
       
@@ -745,46 +657,26 @@ exports.handleChat = async (req, res) => {
               description: item.snippet || '',
             }));
           if (searchProducts.length > 0) {
-            // Update the reply to actually mention the products found
-            const productNames = searchProducts.map(p => {
-              const title = p.title;
-              // Extract brand names more cleanly
-              if (title.includes("Levi")) return "Levi's";
-              if (title.includes("Wrangler")) return "Wrangler";
-              if (title.includes("Lucky Brand")) return "Lucky Brand";
-              if (title.includes("Uniqlo")) return "Uniqlo";
-              if (title.includes("Target")) return "Target";
-              // Fallback: take first meaningful part
-              return title.split('|')[0].split(':')[0].trim();
-            }).slice(0, 3);
-            // Let Jules respond naturally - don't override her response
-            // The AI will handle the response based on the products found
-            
             // Save the link request and product results to conversation
-            // Let the AI handle the response naturally - don't hardcode it
-            if (conversation) {
-              // Don't push anything - let the AI handle the response
-            }
-            // Don't return here - let the flow continue to the AI response
+            conversation.messages.push({ role: 'assistant', content: `Here are some links to check out the products I mentioned:` });
+            await conversation.save();
+            return res.json({ reply: `Here are some links to check out the products I mentioned:`, products: searchProducts });
           } else {
-            if (conversation) {
-              conversation.messages.push({ role: 'assistant', content: `I couldn't find direct links for those products. Want me to try searching for something else?` });
-              await conversation.save();
-            }
+            conversation.messages.push({ role: 'assistant', content: `I couldn't find direct links for those products. Want me to try searching for something else?` });
+            await conversation.save();
             return res.json({ reply: `I couldn't find direct links for those products. Want me to try searching for something else?`, products: [] });
           }
         } catch (err) {
           console.error('Product search error for link request:', err);
-          // Let the AI handle the fallback response naturally
-          // Don't hardcode a fallback - let Jules respond based on context
-          if (conversation) {
-            // Don't push anything - let the AI handle the response
-          }
-          // Don't return here - let the flow continue to the AI response
+          conversation.messages.push({ role: 'assistant', content: `Sorry, I couldn't pull up links for those right now. Want me to try searching for something else?` });
+          await conversation.save();
+          return res.json({ reply: `Sorry, I couldn't pull up links for those right now. Want me to try searching for something else?`, products: [] });
         }
       } else {
-        // If we can't extract any product/brand names, let the AI handle the response naturally
-        // Don't hardcode a clarification request - let Jules respond based on context
+        // If we can't extract any product/brand names, ask for clarification
+        conversation.messages.push({ role: 'assistant', content: `Are you asking where you can buy the products I just mentioned? If so, let me know which one and I'll try to find links!` });
+        await conversation.save();
+        return res.json({ reply: `Are you asking where you can buy the products I just mentioned? If so, let me know which one and I'll try to find links!`, products: [] });
       }
     }
     
@@ -838,7 +730,7 @@ exports.productSearch = async (req, res) => {
   let searchQuery = query;
   try {
     const llmResult = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
         { role: 'user', content: query }
