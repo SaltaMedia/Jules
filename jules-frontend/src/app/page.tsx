@@ -122,12 +122,12 @@ function FAQAccordion() {
     {
       question: "Is Jules just AI?",
       answer:
-        "Yes. Jules is an AI companion, but not the boring kind, or an AI girlfriend. She's powered by AI, but acts more like your friend than a chatbot.",
+        "Yes. Jules is an AI companion, but not the boring kind, or an AI girlfriend. She&apos;s powered by AI, but acts more like your friend than a chatbot.",
     },
     {
       question: "Can Jules help with anything?",
       answer:
-        "Jules is about style and outfits, dating, confidence, and how you show up. She won't write your resume, but will tell you if your jacket&apos;s wrong. We&apos;re working on training Jules with clinical data so she can better help you navigate any of life&apos;s situations. For now, she&apos;s an AI friend that can help you show up better in the real world.",
+        "Jules is about style and outfits, dating, confidence, and how you show up. She won&apos;t write your resume, but will tell you if your jacket&apos;s wrong. We&apos;re working on training Jules with clinical data so she can better help you navigate any of life&apos;s situations. For now, she&apos;s an AI friend that can help you show up better in the real world.",
     },
     {
       question: "Is this for guys only?",
@@ -136,7 +136,7 @@ function FAQAccordion() {
     {
       question: "How personal does this get?",
       answer:
-        "You control what you share. Jules doesn't remember anything unless you use the advanced version, coming later.",
+        "You control what you share. Jules doesn&apos;t remember anything unless you use the advanced version, coming later.",
     },
     {
       question: "Is it free?",
@@ -145,7 +145,7 @@ function FAQAccordion() {
     {
       question: "What do you do with my data?",
       answer:
-        "Your data is secure. We don't harvest data, save it, or sell it.",
+        "Your data is secure. We don&apos;t harvest data, save it, or sell it.",
     },
   ];
   const [openIndex, setOpenIndex] = useState<number | null>(null);
