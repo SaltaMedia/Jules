@@ -15,7 +15,7 @@ export default function Home() {
       <section className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between py-16 px-6 md:px-12">
         <div className="flex-1 flex flex-col items-center md:items-start justify-center mb-10 md:mb-0">
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-10 leading-tight drop-shadow-lg text-center md:text-left">Your Utimate Wingman</h2>
-          <h4 className="text-xl md:text-2xl font-semibold text-white mb-8 leading-tight drop-shadow text-center md:text-left">Most guys want to show up confident, but aren't sure how.</h4>
+          <h4 className="text-xl md:text-2xl font-semibold text-white mb-8 leading-tight drop-shadow text-center md:text-left">Most guys want to show up confident, but aren&apos;t sure how.</h4>
           <p className="text-lg md:text-xl text-white mb-8 leading-tight drop-shadow text-center md:text-left">Jules helps you refine your style, your words, and your presence - without the guesswork.</p>
           <div className="flex gap-4 justify-center md:justify-start">
             <Link href="/login">
