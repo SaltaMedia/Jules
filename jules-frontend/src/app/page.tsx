@@ -6,22 +6,28 @@ import { useState } from "react";
 export default function Home() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#7f7fd5] via-[#86a8e7] to-[#91eac9] flex flex-col items-center">
+      {/* Meet Jules Title Section */}
+      <section className="w-full flex justify-center items-center pt-6 pb-0">
+        <h1 className="text-6xl md:text-7xl font-bold text-black">Meet Jules</h1>
+      </section>
+      
       {/* Hero Section */}
       <section className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between py-16 px-6 md:px-12">
-        <div className="flex-1 flex flex-col items-start justify-center mb-10 md:mb-0">
-          <h1 className="text-5xl md:text-6xl font-bold text-black mb-4">Meet Jules</h1>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-2 leading-tight drop-shadow-lg">Your smart, stylish sidekick for showing up right.</h2>
-          <h4 className="text-xl md:text-2xl font-semibold text-white mb-6 leading-tight drop-shadow">A smarter way to level up - style, dating, and confidence made personal</h4>
-          <div className="flex gap-4">
+        <div className="flex-1 flex flex-col items-center md:items-start justify-center mb-10 md:mb-0">
+          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-10 leading-tight drop-shadow-lg text-center md:text-left">Your Utimate Wingman</h2>
+          <h4 className="text-xl md:text-2xl font-semibold text-white mb-8 leading-tight drop-shadow text-center md:text-left">Most guys want to show up confident, but aren't sure how.</h4>
+          <p className="text-lg md:text-xl text-white mb-8 leading-tight drop-shadow text-center md:text-left">Jules helps you refine your style, your words, and your presence - without the guesswork.</p>
+          <div className="flex gap-4 justify-center md:justify-start">
             <Link href="/login">
-              <button className="bg-pink-500 hover:bg-pink-600 text-white font-semibold px-6 py-3 rounded-lg shadow transition-all text-lg">
-                Talk to Jules
+              <button className="bg-pink-500 hover:bg-pink-600 text-white font-semibold px-6 py-3 rounded-lg shadow transition-all text-lg w-48 h-16">
+                Try Jules Now
               </button>
             </Link>
-            <button className="bg-gray-200 text-gray-500 font-semibold px-6 py-3 rounded-lg shadow text-lg cursor-not-allowed" disabled>
-              App download coming soon
+            <button className="bg-gray-200 text-gray-500 font-semibold px-6 py-3 rounded-lg shadow text-lg cursor-not-allowed w-48 h-16 flex items-center justify-center leading-tight" disabled>
+              <span>App download<br />coming soon</span>
             </button>
           </div>
+          <p className="text-sm text-white/80 mt-3 drop-shadow text-center md:text-left">Free to start. Instant feedback. Built to make you better.</p>
         </div>
         <div className="flex-1 flex justify-center">
           <Image
@@ -121,7 +127,7 @@ function FAQAccordion() {
     {
       question: "Can Jules help with anything?",
       answer:
-        "Jules is about style and outfits, dating, confidence, and how you show up. She won&apos;t write your resume, but will tell you if your jacket&apos;s wrong. We&apos;re working on training Jules with clinical data so she can better help you navigate any of life&apos;s situations. For now, she&apos;s an AI friend that can help you show up better in the real world.",
+        "Jules is about style and outfits, dating, confidence, and how you show up. She won't write your resume, but will tell you if your jacket&apos;s wrong. We&apos;re working on training Jules with clinical data so she can better help you navigate any of life&apos;s situations. For now, she&apos;s an AI friend that can help you show up better in the real world.",
     },
     {
       question: "Is this for guys only?",
@@ -130,7 +136,7 @@ function FAQAccordion() {
     {
       question: "How personal does this get?",
       answer:
-        "You control what you share. Jules doesn&apos;t remember anything unless you use the advanced version, coming later.",
+        "You control what you share. Jules doesn't remember anything unless you use the advanced version, coming later.",
     },
     {
       question: "Is it free?",
