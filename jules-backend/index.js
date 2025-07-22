@@ -15,7 +15,7 @@ const app = express();
 console.log('app created');
 
 console.log('Loading routes...');
-const router = require('./routes/router.js');
+const router = require('./routes/index.js');
 console.log('router loaded');
 
 const path = require('path');
