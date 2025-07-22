@@ -462,9 +462,9 @@ exports.handleChat = async (req, res) => {
         }
         break;
       case "product_request":
-        const products = extractProducts(message);
-        if (products !== "clothing interest") {
-          extractedData.productHistory = products;
+        const extractedProducts = extractProducts(message);
+        if (extractedProducts !== "clothing interest") {
+          extractedData.productHistory = extractedProducts;
         }
         break;
       case "dating_advice":
@@ -503,292 +503,51 @@ exports.handleChat = async (req, res) => {
       cleanedReply = cleanedReply.replace(match[0], '');
     }
     
-    // === STRUCTURED PRODUCT QUERY LOGIC ===
-    let productQuery = null;
-    
-    // If this is a product request and we don't have products yet, search for them
-    // Only search for products if intent is product_request and showProductCards is true
-    // Product search for product requests
-    if (intent === "product_request" && products.length === 0 && showProductCards) {
-      console.log('DEBUG: Product request detected, creating structured product query...');
-      
-      // Create structured product query object
-      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|converse|vans|superga|toms)/i);
-      const productMatch = message.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|converse|vans|superga|toms)/i);
-      
-      // Extract specific product type from message for better matching
-      const specificProductMatch = message.match(/(loafers?|sneakers?|vans|boots?|shoes?|shorts?|jeans?|pants?|shirt|tee|t-shirt|graphic|jacket|blazer|suit|tie|belt|watch)/i);
-      
-      // Create structured product query object
-      if (brandMatch || specificProductMatch) {
-        productQuery = {
-          type: specificProductMatch ? specificProductMatch[0] : "clothing",
-          brands: brandMatch ? [brandMatch[0]] : [],
-          context: "men's fashion, casual style",
-          searchQuery: ""
-        };
-        
-        // Generate search query based on structured data
-        if (brandMatch && specificProductMatch) {
-          productQuery.searchQuery = `${brandMatch[0]} men's ${specificProductMatch[0]} buy shop`;
-        } else if (brandMatch) {
-          productQuery.searchQuery = `${brandMatch[0]} men's clothing buy shop`;
-        } else if (specificProductMatch) {
-          // Handle "graphic t's" specifically
-          if (specificProductMatch[0].toLowerCase().includes('graphic')) {
-            productQuery.searchQuery = `men's graphic t-shirts buy shop`;
-          } else {
-            productQuery.searchQuery = `men's ${specificProductMatch[0]} buy shop`;
-          }
-        }
-        
-        console.log('DEBUG: Structured product query:', productQuery);
-      }
-      
-      // Only proceed with search if we have a structured query
-      if (productQuery && productQuery.searchQuery) {
-        try {
-          const apiKey = process.env.GOOGLE_API_KEY;
-          const cseId = process.env.GOOGLE_CSE_ID;
-          console.log('DEBUG: API Key exists:', !!apiKey);
-          console.log('DEBUG: CSE ID exists:', !!cseId);
-          console.log('DEBUG: Using structured search query:', productQuery.searchQuery);
-        
-        const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
-          params: {
-            key: apiKey,
-            cx: cseId,
-            q: productQuery.searchQuery,
-            num: 6,
-            safe: 'active',
-          },
-        });
-        
-                // === Strengthened fashion filtering in product search ===
-        const forbidden = !shouldHandleWomensFashion(message)
-          ? /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i
-          : /kids|child|children/i; // Only filter kids if gifting is OK
-        const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
-        const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
-        
-        // Extract the specific product type from the search query for better filtering
-        const searchProductType = productQuery.searchQuery.match(/(loafers?|sneakers?|vans|boots?|shoes?|shorts?|jeans?|pants?|shirt|tee|t-shirt|graphic|jacket|blazer|suit|tie|belt|watch)/i);
-        
-        const searchProducts = (response.data.items || [])
-          .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
-          .filter(item => !nonProductSites.test(item.link))
-          .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || ''))) // Exclude Men's Wearhouse
-          .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion/i.test(item.title + ' ' + (item.snippet || ''))) // Only shopping/product sites
-          .filter(item => {
-            // If we have a specific product type, prioritize items that match it
-            if (searchProductType) {
-              const productType = searchProductType[0].toLowerCase();
-              const itemText = (item.title + ' ' + (item.snippet || '')).toLowerCase();
-              return itemText.includes(productType);
-            }
-            return true;
-          })
-          .slice(0, 3)
-          .map((item, index) => ({
-            title: item.title || `Option ${index + 1}`,
-            link: item.link,
-            image: item.pagemap?.cse_image?.[0]?.src || '',
-            price: item.pagemap?.offer?.[0]?.price || '',
-            description: item.snippet || '',
-          }));
-        
-        if (searchProducts.length > 0) {
-          console.log('DEBUG: Found products:', searchProducts.length);
-          console.log('DEBUG: Products found:', JSON.stringify(searchProducts, null, 2));
-          products = searchProducts;
-          
-          // Update the reply to actually mention the products found
-          const productNames = searchProducts.map(p => {
-            const title = p.title;
-            // Extract brand names more cleanly
-            if (title.includes("Levi")) return "Levi's";
-            if (title.includes("Wrangler")) return "Wrangler";
-            if (title.includes("Lucky Brand")) return "Lucky Brand";
-            if (title.includes("Uniqlo")) return "Uniqlo";
-            if (title.includes("Target")) return "Target";
-            // Fallback: take first meaningful part
-            return title.split('|')[0].split(':')[0].trim();
-          }).slice(0, 3);
-          // Let Jules respond naturally - don't override her response
-          // The AI will handle the response based on the products found
-        } else {
-          console.log('DEBUG: No products found in search results');
-          console.log('DEBUG: Raw search results:', JSON.stringify(response.data.items || [], null, 2));
-        }
-              } catch (productError) {
-          console.error('Product search error in chat:', productError);
-          // Continue without products if search fails, but provide helpful advice
-          if (message.toLowerCase().includes('jeans')) {
-            products.push(
-              {
-                title: "Levi's 501 Original Fit Jeans",
-                link: "https://www.levi.com/US/en_US/clothing/men/jeans/501-original-fit-men/00501-0193.html",
-                image: "",
-                price: "$70-80",
-                description: "Classic straight leg jeans that work for most guys"
-              },
-              {
-                title: "Uniqlo Selvedge Denim Jeans",
-                link: "https://www.uniqlo.com/us/en/products/E450000-000",
-                image: "",
-                price: "$50-60",
-                description: "Quality selvedge denim at a great price point"
-              },
-              {
-                title: "Target Goodfellow & Co. Jeans",
-                link: "https://www.target.com/c/men-s-clothing-jeans/-/N-5q0f6",
-                image: "",
-                price: "$30-40",
-                description: "Budget-friendly option that still looks good"
-              }
-            );
-            
-            // Let the AI handle the fallback response naturally
-            // Don't override cleanedReply - let the AI respond based on the fallback products
-          }
-        }
-    }
-    }
-    
-    // If user is asking for links, try to extract product/brand names from last assistant message
-    // Only process link requests if intent is product_request and showProductCards is true
-    // Link processing for product requests - only for actual link requests, not initial product requests
-    if (intent === "product_request" && showProductCards && (message.toLowerCase().includes('link') || message.toLowerCase().includes('where to buy') || message.toLowerCase().includes('buy') || message.toLowerCase().includes('purchase'))) {
-      console.log('DEBUG: Link request detected, extracting products from conversation...');
-      
-      // Check if this is a request for events/meetups rather than products
-      const eventKeywords = /(meetup|workshop|class|event|drawing|art|portland)/i;
-      if (eventKeywords.test(message)) {
-        // For event/meetup requests, don't search for products
-        if (conversation) {
-          conversation.messages.push({ role: 'assistant', content: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.` });
-          await conversation.save();
-        }
-        return res.json({ reply: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.`, products: [] });
-      }
-      
-      // Use the user's message directly for search - prioritize current request over conversation context
-      let searchQuery = message;
-      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
-      const productMatch = message.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit|loafers|vans)/i);
-      
-      // Extract specific product type from message for better matching
-      const specificProductMatch = message.match(/(loafers?|sneakers?|vans|boots?|shoes?|shorts?|jeans?|pants?|shirt|tee|t-shirt|graphic|jacket|blazer|suit|tie|belt|watch)/i);
-      
-      if (brandMatch && specificProductMatch) {
-        searchQuery = `${brandMatch[0]} men's ${specificProductMatch[0]} buy shop`;
-      } else if (brandMatch) {
-        searchQuery = `${brandMatch[0]} men's clothing buy shop`;
-      } else if (specificProductMatch) {
-        // Handle "graphic t's" specifically
-        if (specificProductMatch[0].toLowerCase().includes('graphic')) {
-          searchQuery = `men's graphic t-shirts buy shop`;
-        } else {
-          searchQuery = `men's ${specificProductMatch[0]} buy shop`;
-        }
-      } else if (productMatch) {
-        searchQuery = `men's ${productMatch[0]} buy shop`;
-      } else {
-        // Use the original message with "men's" prefix for better results
-        searchQuery = `men's ${message} buy shop`;
-      }
-      
-      if (searchQuery) {
-        console.log('DEBUG: Using search query from user message:', searchQuery);
-        // Run product search for the extracted brands/products
-        try {
-          const apiKey = process.env.GOOGLE_API_KEY;
-          const cseId = process.env.GOOGLE_CSE_ID;
-          const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
-            params: {
-              key: apiKey,
-              cx: cseId,
-              q: searchQuery,
-              num: 6,
-              safe: 'active',
-            },
-          });
-          const forbidden = !shouldHandleWomensFashion(message)
-            ? /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i
-            : /kids|child|children/i; // Only filter kids if gifting is OK
-          const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
-          const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
-          
-          // Extract the specific product type from the search query for better filtering
-          const searchProductType = searchQuery.match(/(loafers?|sneakers?|vans|boots?|shoes?|shorts?|jeans?|pants?|shirt|tee|t-shirt|graphic|jacket|blazer|suit|tie|belt|watch)/i);
-          
-          const searchProducts = (response.data.items || [])
-            .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
-            .filter(item => !nonProductSites.test(item.link))
-            .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || ''))) // Exclude Men's Wearhouse
-            .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion/i.test(item.title + ' ' + (item.snippet || ''))) // Only shopping/product sites
-            .filter(item => {
-              // If we have a specific product type, prioritize items that match it
-              if (searchProductType) {
-                const productType = searchProductType[0].toLowerCase();
-                const itemText = (item.title + ' ' + (item.snippet || '')).toLowerCase();
-                return itemText.includes(productType);
-              }
-              return true;
-            })
-            .slice(0, 3)
-            .map((item, index) => ({
-              title: item.title || `Option ${index + 1}`,
-              link: item.link,
-              image: item.pagemap?.cse_image?.[0]?.src || '',
-              price: item.pagemap?.offer?.[0]?.price || '',
-              description: item.snippet || '',
-            }));
-          if (searchProducts.length > 0) {
-            // Update the reply to actually mention the products found
-            const productNames = searchProducts.map(p => {
-              const title = p.title;
-              // Extract brand names more cleanly
-              if (title.includes("Levi")) return "Levi's";
-              if (title.includes("Wrangler")) return "Wrangler";
-              if (title.includes("Lucky Brand")) return "Lucky Brand";
-              if (title.includes("Uniqlo")) return "Uniqlo";
-              if (title.includes("Target")) return "Target";
-              // Fallback: take first meaningful part
-              return title.split('|')[0].split(':')[0].trim();
-            }).slice(0, 3);
-            // Let Jules respond naturally - don't override her response
-            // The AI will handle the response based on the products found
-            
-            // Save the link request and product results to conversation
-            // Let the AI handle the response naturally - don't hardcode it
-            if (conversation) {
-              // Don't push anything - let the AI handle the response
-            }
-            // Don't return here - let the flow continue to the AI response
-          } else {
-            if (conversation) {
-              conversation.messages.push({ role: 'assistant', content: `I couldn't find direct links for those products. Want me to try searching for something else?` });
-              await conversation.save();
-            }
-            return res.json({ reply: `I couldn't find direct links for those products. Want me to try searching for something else?`, products: [] });
-          }
-        } catch (err) {
-          console.error('Product search error for link request:', err);
-          // Let the AI handle the fallback response naturally
-          // Don't hardcode a fallback - let Jules respond based on context
-          if (conversation) {
-            // Don't push anything - let the AI handle the response
-          }
-          // Don't return here - let the flow continue to the AI response
-        }
-      } else {
-        // If we can't extract any product/brand names, let the AI handle the response naturally
-        // Don't hardcode a clarification request - let Jules respond based on context
-      }
-    }
+    // Product search is now handled by the products route for better functionality
     
     const finalReply = cleanedReply.trim();
+    
+    // For product requests, always use the products route for intelligent context extraction and brand-specific searching
+    if (intent === "product_request" && showProductCards) {
+      console.log('DEBUG: Product request detected, routing to products route...');
+      
+      // Save conversation FIRST so Jules's brand recommendations are available for extraction
+      if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
+        conversation.messages.push({ role: 'assistant', content: finalReply });
+        try {
+          await conversation.save();
+          console.log('DEBUG: Conversation saved before products route call');
+        } catch (saveError) {
+          console.error('DEBUG: Error saving conversation:', saveError);
+        }
+      }
+      
+      try {
+        const productsResponse = await axios.post(`${req.protocol}://${req.get('host')}/api/products`, {
+          message,
+          conversation,
+          julesResponse: finalReply // Pass Jules's current response so products route can extract brands from it
+        }, {
+          headers: {
+            'Authorization': req.headers.authorization,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (productsResponse.data.hasProducts && productsResponse.data.products.length > 0) {
+          console.log('DEBUG: Products found via route:', productsResponse.data.products.length);
+          // Replace the products array with the intelligent results from the products route
+          products = [...productsResponse.data.products]; // Create new array with products from route
+          showProductCards = true;
+        } else {
+          console.log('DEBUG: No products found via route');
+        }
+      } catch (err) {
+        console.error('Products route error:', err);
+        // Let the AI handle the fallback response naturally
+      }
+    }
+    
     console.log('DEBUG: Backend final reply length:', finalReply.length);
     console.log('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
     console.log('DEBUG: Backend sending response to frontend');
@@ -807,8 +566,8 @@ exports.handleChat = async (req, res) => {
     
     console.log('DEBUG: About to send JSON response');
     // Only include products in response if showProductCards is true
-    const responseProducts = showProductCards ? products : [];
-    res.json({ reply: finalReply, products: responseProducts });
+    const finalProducts = showProductCards ? products : [];
+    res.json({ reply: finalReply, products: finalProducts });
     console.log('DEBUG: JSON response sent successfully');
   } catch (err) {
     // Handle CastError specifically for invalid userIds
@@ -865,7 +624,7 @@ exports.productSearch = async (req, res) => {
     const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
     const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review/i;
     // Try to extract product info (name, image, price, description, link)
-    const products = (response.data.items || [])
+              const searchResults = (response.data.items || [])
       .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
       .filter(item => !nonProductSites.test(item.link))
       .slice(0, 4)
@@ -876,7 +635,7 @@ exports.productSearch = async (req, res) => {
         price: item.pagemap?.offer?.[0]?.price || '',
         description: item.snippet || '',
       }));
-    res.json({ products });
+    res.json({ products: searchResults });
   } catch (err) {
     console.error('Product search error:', err.response ? err.response.data : err.message);
     res.status(500).json({ error: 'Product search failed.', details: err.response ? err.response.data : err.message });
