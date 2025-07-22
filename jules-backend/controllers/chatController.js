@@ -481,11 +481,41 @@ exports.handleChat = async (req, res) => {
       console.log('DEBUG: Updated user memory with:', extractedData);
     }
     
-    // Debug: Log response length to see if it's being truncated
+    // === ENHANCED DEBUG LOGGING ===
+    console.log('=== PRODUCTION DEBUG START ===');
+    console.log('DEBUG: User ID:', userId);
+    console.log('DEBUG: Message count:', messageCount);
+    console.log('DEBUG: Max tokens:', maxTokens);
+    console.log('DEBUG: Temperature:', 0.7);
+    console.log('DEBUG: Model: gpt-4o');
+    console.log('DEBUG: Intent:', intent);
+    console.log('DEBUG: Mode:', routedMode);
+    console.log('DEBUG: Final mode:', finalMode);
+    
+    // Log memory context
+    console.log('DEBUG: Memory context length:', memoryContext.length);
+    console.log('DEBUG: Memory context preview:', memoryContext.substring(0, 200) + '...');
+    
+    // Log conversation history
+    console.log('DEBUG: Recent messages count:', recentMessages.length);
+    console.log('DEBUG: Recent messages:', JSON.stringify(recentMessages, null, 2));
+    
+    // Log system prompt
+    console.log('DEBUG: System prompt length:', systemPrompt.length);
+    console.log('DEBUG: System prompt preview:', systemPrompt.substring(0, 300) + '...');
+    
+    // Log OpenAI API call details
+    console.log('DEBUG: OpenAI API call - messages count:', messages.length);
+    console.log('DEBUG: OpenAI API call - first message role:', messages[0].role);
+    console.log('DEBUG: OpenAI API call - last message role:', messages[messages.length - 1].role);
+    
+    // Log OpenAI response
+    console.log('DEBUG: OpenAI raw response:', JSON.stringify(completion, null, 2));
     console.log('DEBUG: Response length:', reply.length);
     console.log('DEBUG: Response preview:', reply.substring(0, 200) + '...');
     console.log('DEBUG: Response ends with:', reply.substring(reply.length - 50));
     console.log('DEBUG: Full response:', reply);
+    console.log('=== PRODUCTION DEBUG END ===');
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];

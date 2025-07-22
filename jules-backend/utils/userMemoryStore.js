@@ -39,12 +39,16 @@ function getMemorySummary(userId) {
   const productHistory = memory.productHistory.map(entry => entry.value || entry).join(", ") || "N/A";
   const goals = memory.goals.map(entry => entry.value || entry).join(", ") || "N/A";
   
-  return `
+  const summary = `
 User prefers: ${stylePrefs}
 Emotional patterns: ${emotionalNotes}
 Products they've liked: ${productHistory}
 Goals they've shared: ${goals}
 `.trim();
+  
+  console.log('DEBUG: getMemorySummary called for userId:', userId);
+  console.log('DEBUG: Memory summary:', summary);
+  return summary;
 }
 
 function getToneProfile(userId) {
@@ -119,7 +123,11 @@ function addSessionMessage(userId, message) {
 
 function getSessionHistory(userId) {
   const memory = getUserMemory(userId);
-  return memory.recentMessages || [];
+  const sessionHistory = memory.recentMessages || [];
+  console.log('DEBUG: getSessionHistory called for userId:', userId);
+  console.log('DEBUG: Session history length:', sessionHistory.length);
+  console.log('DEBUG: Session history:', JSON.stringify(sessionHistory, null, 2));
+  return sessionHistory;
 }
 
 module.exports = {
