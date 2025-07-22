@@ -1,1 +1,0 @@
-WORKING FALLBACK VERSION - Product cards working for 'show me' requests - Sun Jul 20 00:38:26 PDT 2025

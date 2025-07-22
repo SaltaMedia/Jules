@@ -29,27 +29,32 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
   // Enhanced brand extraction - look for brands in Jules's recommendations
   console.log('DEBUG: Full context for brand extraction:', fullContext.substring(0, 200) + '...');
   
-  // Check for specific denim brands first
-  let brandMatch = null;
-  if (fullContext.match(/naked.*famous/i)) {
-    brandMatch = ['naked & famous'];
-  } else if (fullContext.match(/a\.p\.c/i)) {
-    brandMatch = ['a.p.c'];
-  } else if (fullContext.match(/nudie.*jeans/i)) {
-    brandMatch = ['nudie jeans'];
-  } else if (fullContext.match(/acne.*studios/i)) {
-    brandMatch = ['acne studios'];
-  } else if (fullContext.match(/rag.*bone/i)) {
-    brandMatch = ['rag & bone'];
-  } else {
-    // Fallback to general brand matching
-    brandMatch = fullContext.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone)/i);
+  // Check for brands in the full context
+  const brandMatch = fullContext.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/i);
+  
+  // PRIORITY: Look at Jules's response first if available
+  let extractedBrands = [];
+  if (julesResponse) {
+    console.log('DEBUG: Checking Jules response for brands:', julesResponse.substring(0, 100) + '...');
+    // Extract ALL brands mentioned in Jules's response
+    const brandMatches = julesResponse.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+    if (brandMatches && brandMatches.length > 0) {
+      // Remove duplicates and keep order
+      extractedBrands = [...new Set(brandMatches)];
+      console.log('DEBUG: Found brands in Jules response:', extractedBrands);
+    }
   }
   
-  // If no brand found in full context, specifically look in Jules's recent messages
-  let extractedBrand = brandMatch ? brandMatch[0] : null;
-  console.log('DEBUG: Initial brand extraction:', extractedBrand);
+  // For backward compatibility, keep the first brand as extractedBrand
+  let extractedBrand = extractedBrands.length > 0 ? extractedBrands[0] : null;
   
+  // If no brand found in Jules's response, check the full context
+  if (!extractedBrand) {
+    extractedBrand = brandMatch ? brandMatch[0] : null;
+    console.log('DEBUG: Brand from full context:', extractedBrand);
+  }
+  
+  // If still no brand, look in recent assistant messages
   if (!extractedBrand && conversation && conversation.messages && conversation.messages.length > 0) {
     // Look at the last few assistant messages (Jules's responses) for brand recommendations
     const assistantMessages = conversation.messages
@@ -59,24 +64,10 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
     console.log('DEBUG: Checking assistant messages for brands:', assistantMessages.length);
     for (const msg of assistantMessages) {
       console.log('DEBUG: Checking message:', msg.content.substring(0, 100) + '...');
-      // Check for specific denim brands first in assistant messages
-      let brandInMessage = null;
-      if (msg.content.match(/naked.*famous/i)) {
-        brandInMessage = ['naked & famous'];
-      } else if (msg.content.match(/a\.p\.c/i)) {
-        brandInMessage = ['a.p.c'];
-      } else if (msg.content.match(/nudie.*jeans/i)) {
-        brandInMessage = ['nudie jeans'];
-      } else if (msg.content.match(/acne.*studios/i)) {
-        brandInMessage = ['acne studios'];
-      } else if (msg.content.match(/rag.*bone/i)) {
-        brandInMessage = ['rag & bone'];
-      } else {
-        // Fallback to general brand matching
-        brandInMessage = msg.content.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone)/i);
-      }
-      if (brandInMessage) {
-        extractedBrand = brandInMessage[0];
+      // Extract all brands mentioned in this message
+      const brandMatches = msg.content.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+      if (brandMatches && brandMatches.length > 0) {
+        extractedBrand = brandMatches[0];
         console.log('DEBUG: Found brand in assistant message:', extractedBrand);
         break;
       }
@@ -150,15 +141,22 @@ function buildSearchQuery(context) {
       searchQuery = `tech gadgets buy shop`;
     }
   } else {
-    // Default clothing search
+    // Default clothing search - prioritize specific brands mentioned
     if (context.brand && context.product) {
-      searchQuery = `${context.brand} men's ${context.product} buy shop`;
+      searchQuery = `"${context.brand}" men's ${context.product} buy shop purchase`;
     } else if (context.brand) {
-      searchQuery = `${context.brand} men's clothing buy shop`;
+      searchQuery = `"${context.brand}" men's ${context.product || 'clothing'} buy shop purchase`;
     } else if (context.product) {
-      searchQuery = `men's ${context.product} buy shop`;
+      // If no specific brand but we have product, try to find the brands mentioned in the context
+      const brandMatches = context.fullContext.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+      if (brandMatches && brandMatches.length > 0) {
+        // Use the first brand found
+        searchQuery = `"${brandMatches[0]}" men's ${context.product} buy shop purchase`;
+      } else {
+        searchQuery = `men's ${context.product} buy shop purchase`;
+      }
     } else {
-      searchQuery = `men's clothing buy shop`;
+      searchQuery = `men's clothing buy shop purchase`;
     }
   }
   
@@ -183,11 +181,18 @@ router.post('/', auth, async (req, res) => {
     const context = extractProductContext(conversation, message, julesResponse);
     console.log('DEBUG: Product context extracted:', context);
     
-    // Build search query
-    const searchQuery = buildSearchQuery(context);
-    console.log('DEBUG: Search query:', searchQuery);
+    // Get all brands mentioned in Jules's response
+    const allBrands = [];
+    if (julesResponse) {
+      const brandMatches = julesResponse.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+      if (brandMatches && brandMatches.length > 0) {
+        allBrands.push(...new Set(brandMatches));
+      }
+    }
     
-    // Perform Google Custom Search
+    console.log('DEBUG: All brands found:', allBrands);
+    
+    // Perform Google Custom Search for each brand
     const apiKey = process.env.GOOGLE_API_KEY;
     const cseId = process.env.GOOGLE_CSE_ID;
     
@@ -196,45 +201,111 @@ router.post('/', auth, async (req, res) => {
       return res.status(500).json({ error: 'Product search not configured' });
     }
     
-    const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
-      params: {
-        key: apiKey,
-        cx: cseId,
-        q: searchQuery,
-        num: 6,
-        safe: 'active',
-      },
-    });
+    let allProducts = [];
     
-    // Filter and process results
-    const forbidden = context.isGift 
-      ? /kids|child|children/i  // Only filter kids for gifts
-      : /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+    // If we have specific brands from Jules's response, search for each one
+    if (allBrands.length > 0) {
+      for (const brand of allBrands.slice(0, 3)) { // Limit to 3 brands to avoid too many API calls
+        const brandContext = { ...context, brand };
+        const searchQuery = buildSearchQuery(brandContext);
+        console.log(`DEBUG: Searching for brand "${brand}":`, searchQuery);
+        
+        try {
+          const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+            params: {
+              key: apiKey,
+              cx: cseId,
+              q: searchQuery,
+              num: 2, // Get 2 results per brand
+              safe: 'active',
+            },
+          });
+          
+          // Process results for this brand
+          const forbidden = context.isGift 
+            ? /kids|child|children/i
+            : /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+          
+          const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
+          const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
+          
+          const brandProducts = (response.data.items || [])
+            .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+            .filter(item => !nonProductSites.test(item.link))
+            .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || '')))
+            .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion|jewelry/i.test(item.title + ' ' + (item.snippet || '')))
+            .slice(0, 2)
+            .map((item, index) => ({
+              title: item.title || `${brand} Option ${index + 1}`,
+              link: item.link,
+              image: item.pagemap?.cse_image?.[0]?.src || '',
+              price: item.pagemap?.offer?.[0]?.price || '',
+              description: item.snippet || '',
+              brand: brand // Add brand info to the product
+            }));
+          
+          allProducts.push(...brandProducts);
+          console.log(`DEBUG: Found ${brandProducts.length} products for ${brand}`);
+        } catch (error) {
+          console.error(`Error searching for brand ${brand}:`, error.message);
+        }
+      }
+    } else {
+      // Fallback to original single search if no brands found
+      const searchQuery = buildSearchQuery(context);
+      console.log('DEBUG: Fallback search query:', searchQuery);
+      
+      const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+        params: {
+          key: apiKey,
+          cx: cseId,
+          q: searchQuery,
+          num: 6,
+          safe: 'active',
+        },
+      });
+      
+      // Filter and process results for fallback search
+      const forbidden = context.isGift 
+        ? /kids|child|children/i
+        : /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+      
+      const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
+      const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
+      
+      allProducts = (response.data.items || [])
+        .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+        .filter(item => !nonProductSites.test(item.link))
+        .filter(item => {
+          // Additional relevance check - ensure the item title contains the product or brand
+          const itemText = (item.title + ' ' + (item.snippet || '')).toLowerCase();
+          if (context.product && !itemText.includes(context.product.toLowerCase())) {
+            return false;
+          }
+          if (context.brand && !itemText.includes(context.brand.toLowerCase())) {
+            return false;
+          }
+          return true;
+        })
+        .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || '')))
+        .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion|jewelry/i.test(item.title + ' ' + (item.snippet || '')))
+        .slice(0, 3)
+        .map((item, index) => ({
+          title: item.title || `Option ${index + 1}`,
+          link: item.link,
+          image: item.pagemap?.cse_image?.[0]?.src || '',
+          price: item.pagemap?.offer?.[0]?.price || '',
+          description: item.snippet || '',
+        }));
+    }
     
-    const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
-    const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
-    
-    const products = (response.data.items || [])
-      .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
-      .filter(item => !nonProductSites.test(item.link))
-      .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || '')))
-      .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion|jewelry/i.test(item.title + ' ' + (item.snippet || '')))
-      .slice(0, 3)
-      .map((item, index) => ({
-        title: item.title || `Option ${index + 1}`,
-        link: item.link,
-        image: item.pagemap?.cse_image?.[0]?.src || '',
-        price: item.pagemap?.offer?.[0]?.price || '',
-        description: item.snippet || '',
-      }));
-    
-    console.log('DEBUG: Found products:', products.length);
+    console.log('DEBUG: Found total products:', allProducts.length);
     
     res.json({ 
-      products,
+      products: allProducts,
       context,
-      searchQuery,
-      hasProducts: products.length > 0
+      searchQuery: allBrands.length > 0 ? `Multiple brands: ${allBrands.join(', ')}` : 'Fallback search',
+      hasProducts: allProducts.length > 0
     });
     
   } catch (error) {

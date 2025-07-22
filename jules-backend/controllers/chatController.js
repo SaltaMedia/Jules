@@ -84,9 +84,11 @@ function classifyIntent(input) {
   // Vague chat detection moved to main handler for escalating tone
   
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
-  if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style")) return "style_advice";
-  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants")) return "product_request";
-  if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say")) return "dating_advice";
+  if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("try this")) return "practice";
+  // Product requests take priority over style advice
+  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants") || msg.includes("sneakers")) return "product_request";
+  if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style") || msg.includes("pack") || msg.includes("travel") || msg.includes("europe") || msg.includes("trip") || msg.includes("what should i wear") || msg.includes("what should i rock") || msg.includes("outfit advice") || msg.includes("fashion advice") || msg.includes("style advice") || msg.includes("what to wear") || msg.includes("clothing") || msg.includes("dress") || msg.includes("look") || msg.includes("appearance") || msg.includes("grooming")) return "style_advice";
+  if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say") || msg.includes("date") || msg.includes("dating")) return "dating_advice";
   return "general_chat";
 }
 
@@ -330,11 +332,28 @@ exports.handleChat = async (req, res) => {
     console.log('DEBUG: Message being routed:', message);
     console.log('=== INTENT ROUTING DEBUG END ===');
     
-    // Use intent classification to override routing when appropriate
-    let finalMode = routedMode;
+    // Use intent classification to route to specialized handlers
     if (intent === "emotional_support" || intent === "dating_advice") {
-      finalMode = "dating_advice";
-    } else if (intent === "style_advice") {
+      // Route to dating controller
+      const { handleDating } = require('./datingController');
+      return handleDating(req, res);
+    } else if (intent === "practice" || message.toLowerCase().includes("practice") || message.toLowerCase().includes("roleplay")) {
+      // Route to practice controller
+      const { handlePractice } = require('./practiceController');
+      return handlePractice(req, res);
+    } else if (intent === "style_advice" || message.toLowerCase().includes("pack") || message.toLowerCase().includes("travel") || message.toLowerCase().includes("outfit") || message.toLowerCase().includes("wear") || message.toLowerCase().includes("what should i wear") || message.toLowerCase().includes("what should i rock") || message.toLowerCase().includes("outfit advice") || message.toLowerCase().includes("fashion advice") || message.toLowerCase().includes("style advice") || message.toLowerCase().includes("what to wear") || message.toLowerCase().includes("clothing") || message.toLowerCase().includes("dress") || message.toLowerCase().includes("look") || message.toLowerCase().includes("appearance") || message.toLowerCase().includes("grooming")) {
+      // Route to style controller (removed sneakers/shoes to avoid conflict with product requests)
+      const { handleStyle } = require('./styleController');
+      return handleStyle(req, res);
+    } else if (intent === "general_chat" && !message.toLowerCase().includes("advice") && !message.toLowerCase().includes("help")) {
+      // Route to conversation controller for casual chat
+      const { handleConversation } = require('./conversationController');
+      return handleConversation(req, res);
+    }
+    
+    // Use intent classification to override routing when appropriate (for remaining cases)
+    let finalMode = routedMode;
+    if (intent === "style_advice") {
       finalMode = "style_advice";
     } else if (intent === "product_request") {
       finalMode = "product_request";
