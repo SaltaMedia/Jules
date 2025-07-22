@@ -15,11 +15,24 @@ const configPath = path.join(__dirname, '../jules_cursor_config.json');
 let julesConfig = {};
 try {
   julesConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  console.log('Loaded Jules config:', configPath);
+  console.log('=== CONFIG LOADING DEBUG ===');
+  console.log('Config path:', configPath);
+  console.log('Config file exists:', fs.existsSync(configPath));
+  console.log('Config file size:', fs.statSync(configPath).size, 'bytes');
+  console.log('Loaded Jules config successfully');
   console.log('Config keys:', Object.keys(julesConfig));
   console.log('Intent routing keys:', Object.keys(julesConfig.intent_routing || {}));
+  console.log('Modes available:', Object.keys(julesConfig.modes || {}));
+  console.log('Conversation mode style:', julesConfig.modes?.conversation?.style);
+  console.log('=== CONFIG LOADING DEBUG END ===');
 } catch (err) {
+  console.error('=== CONFIG LOADING ERROR ===');
   console.error('Failed to load Jules config:', err);
+  console.error('Config path attempted:', configPath);
+  console.error('Current directory:', __dirname);
+  console.error('Directory contents:', fs.readdirSync(__dirname));
+  console.error('Parent directory contents:', fs.readdirSync(path.dirname(__dirname)));
+  console.error('=== CONFIG LOADING ERROR END ===');
 }
 
 // Intent router using config.intent_routing
@@ -307,10 +320,15 @@ exports.handleChat = async (req, res) => {
     console.log(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
     
     // === INTENT ROUTING ===
+    console.log('=== INTENT ROUTING DEBUG ===');
+    console.log('DEBUG: Jules config loaded:', !!julesConfig.intent_routing);
+    console.log('DEBUG: Available intent routing:', Object.keys(julesConfig.intent_routing || {}));
     const routedMode = routeIntent(message);
     const intent = classifyIntent(message);
     console.log('DEBUG: Intent classification result:', intent);
     console.log('DEBUG: Routed mode result:', routedMode);
+    console.log('DEBUG: Message being routed:', message);
+    console.log('=== INTENT ROUTING DEBUG END ===');
     
     // Use intent classification to override routing when appropriate
     let finalMode = routedMode;
