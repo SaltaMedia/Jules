@@ -15,28 +15,8 @@ const app = express();
 console.log('app created');
 
 console.log('Loading routes...');
-const chatRoutes = require('./routes/chat');
-console.log('chatRoutes loaded');
-const datingRoutes = require('./routes/dating');
-console.log('datingRoutes loaded');
-const practiceRoutes = require('./routes/practice');
-console.log('practiceRoutes loaded');
-const styleRoutes = require('./routes/style');
-console.log('styleRoutes loaded');
-const conversationRoutes = require('./routes/conversation');
-console.log('conversationRoutes loaded');
-const authRoutes = require('./routes/auth');
-console.log('authRoutes loaded');
-const profileRoutes = require('./routes/profile');
-console.log('profileRoutes loaded');
-const userProfileRoutes = require('./routes/userProfile');
-console.log('userProfileRoutes loaded');
-const uploadRoutes = require('./routes/upload');
-console.log('uploadRoutes loaded');
-const productsRoutes = require('./routes/products');
-console.log('productsRoutes loaded');
-const adminRoutes = require('./routes/admin');
-console.log('adminRoutes loaded');
+const router = require('./routes/router.js');
+console.log('router loaded');
 
 const path = require('path');
 const session = require('express-session');
@@ -59,17 +39,7 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-app.use('/api/chat', chatRoutes);
-app.use('/api/dating', datingRoutes);
-app.use('/api/practice', practiceRoutes);
-app.use('/api/style', styleRoutes);
-app.use('/api/conversation', conversationRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/user-profile', userProfileRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/products', productsRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api', router);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Only apply session middleware to routes that need authentication
