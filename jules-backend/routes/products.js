@@ -318,4 +318,162 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// GET /api/products - Fallback route for Railway proxy issues
+router.get('/', auth, async (req, res) => {
+  try {
+    // Extract query parameters for GET requests
+    const { message, conversation, julesResponse } = req.query;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    // Convert query string back to object for processing
+    const requestBody = {
+      message,
+      conversation: conversation ? JSON.parse(conversation) : null,
+      julesResponse: julesResponse || null
+    };
+    
+    // Call the same logic as POST route
+    const context = extractProductContext(requestBody.conversation, requestBody.message, requestBody.julesResponse);
+    console.log('DEBUG: Product context extracted (GET):', context);
+    
+    // Get all brands mentioned in Jules's response
+    const allBrands = [];
+    if (requestBody.julesResponse) {
+      const brandMatches = requestBody.julesResponse.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+      if (brandMatches && brandMatches.length > 0) {
+        allBrands.push(...new Set(brandMatches));
+      }
+    }
+    
+    console.log('DEBUG: All brands found (GET):', allBrands);
+    
+    // Perform Google Custom Search for each brand
+    const apiKey = process.env.GOOGLE_API_KEY;
+    const cseId = process.env.GOOGLE_CSE_ID;
+    
+    if (!apiKey || !cseId) {
+      console.error('Missing Google API credentials');
+      return res.status(500).json({ error: 'Product search not configured' });
+    }
+    
+    let allProducts = [];
+    
+    // If we have specific brands from Jules's response, search for each one
+    if (allBrands.length > 0) {
+      for (const brand of allBrands.slice(0, 3)) { // Limit to 3 brands to avoid too many API calls
+        const brandContext = { ...context, brand };
+        const searchQuery = buildSearchQuery(brandContext);
+        console.log(`DEBUG: Searching for brand "${brand}" (GET):`, searchQuery);
+        
+        try {
+          const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+            params: {
+              key: apiKey,
+              cx: cseId,
+              q: searchQuery,
+              num: 2, // Get 2 results per brand
+              safe: 'active',
+            },
+          });
+          
+          // Process results for this brand
+          let forbidden = context.isGift 
+            ? /kids|child|children/i
+            : /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+          
+          let nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
+          let excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
+          
+          const brandProducts = (response.data.items || [])
+            .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+            .filter(item => !nonProductSites.test(item.link))
+            .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || '')))
+            .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion|jewelry/i.test(item.title + ' ' + (item.snippet || '')))
+            .slice(0, 2)
+            .map((item, index) => ({
+              title: item.title || `${brand} Option ${index + 1}`,
+              link: item.link,
+              image: item.pagemap?.cse_image?.[0]?.src || '',
+              price: item.pagemap?.offer?.[0]?.price || '',
+              description: item.snippet || '',
+              brand: brand // Add brand info to the product
+            }));
+          
+          allProducts.push(...brandProducts);
+          console.log(`DEBUG: Found ${brandProducts.length} products for ${brand} (GET)`);
+        } catch (error) {
+          console.error(`Error searching for brand ${brand} (GET):`, error.message);
+        }
+      }
+    } else {
+      // Fallback to original single search if no brands found
+      const searchQuery = buildSearchQuery(context);
+      console.log('DEBUG: Fallback search query (GET):', searchQuery);
+      
+      const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+        params: {
+          key: apiKey,
+          cx: cseId,
+          q: searchQuery,
+          num: 6,
+          safe: 'active',
+        },
+      });
+      
+      // Filter and process results for fallback search
+      let forbidden = context.isGift 
+        ? /kids|child|children/i
+        : /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+      
+      let nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
+      let excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
+      
+      allProducts = (response.data.items || [])
+        .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+        .filter(item => !nonProductSites.test(item.link))
+        .filter(item => {
+          // Additional relevance check - ensure the item title contains the product or brand
+          const itemText = (item.title + ' ' + (item.snippet || '')).toLowerCase();
+          if (context.product && !itemText.includes(context.product.toLowerCase())) {
+            return false;
+          }
+          if (context.brand && !itemText.includes(context.brand.toLowerCase())) {
+            return false;
+          }
+          return true;
+        })
+        .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || '')))
+        .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion|jewelry/i.test(item.title + ' ' + (item.snippet || '')))
+        .slice(0, 3)
+        .map((item, index) => ({
+          title: item.title || `Option ${index + 1}`,
+          link: item.link,
+          image: item.pagemap?.cse_image?.[0]?.src || '',
+          price: item.pagemap?.offer?.[0]?.price || '',
+          description: item.snippet || '',
+        }));
+    }
+    
+    console.log('DEBUG: Found total products (GET):', allProducts.length);
+    
+    res.json({ 
+      products: allProducts,
+      context,
+      searchQuery: allBrands.length > 0 ? `Multiple brands: ${allBrands.join(', ')}` : 'Fallback search',
+      hasProducts: allProducts.length > 0
+    });
+    
+  } catch (error) {
+    console.error('Product search error (GET):', error);
+    res.status(500).json({ 
+      error: 'Product search failed',
+      products: [],
+      hasProducts: false
+    });
+  }
+});
+
 module.exports = router; 
