@@ -6,7 +6,7 @@ const User = require('../models/User');
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   // Determine the callback URL based on environment
   const callbackURL = process.env.NODE_ENV === 'production' 
-    ? 'https://jules-bsnr.onrender.com/api/auth/google/callback'
+    ? 'https://jules-production-2221.up.railway.app/api/auth/google/callback'
     : 'http://localhost:4000/api/auth/google/callback';
     
   passport.use(new GoogleStrategy({

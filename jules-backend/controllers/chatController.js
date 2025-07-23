@@ -1,5 +1,15 @@
-require('dotenv').config();
+// Only load dotenv in development (not production)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const { OpenAI } = require('openai');
+
+// Debug logging helper - only log in development
+const debugLog = (...args) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(...args);
+  }
+};
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const axios = require('axios');
@@ -81,14 +91,20 @@ function detectGenderContext(message) {
 function classifyIntent(input) {
   const msg = input.toLowerCase();
   
+  debugLog('DEBUG: classifyIntent called with:', input);
+  
   // Vague chat detection moved to main handler for escalating tone
   
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
   if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("try this")) return "practice";
   // Product requests take priority over style advice
-  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants") || msg.includes("sneakers")) return "product_request";
+  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants") || msg.includes("sneakers") || msg.includes("blazer") || msg.includes("jacket") || msg.includes("suit") || msg.includes("coat") || msg.includes("t-shirt") || msg.includes("tshirt") || msg.includes("shorts") || msg.includes("socks") || msg.includes("kicks")) {
+    debugLog('DEBUG: classifyIntent detected product_request via keywords');
+    return "product_request";
+  }
   if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style") || msg.includes("pack") || msg.includes("travel") || msg.includes("europe") || msg.includes("trip") || msg.includes("what should i wear") || msg.includes("what should i rock") || msg.includes("outfit advice") || msg.includes("fashion advice") || msg.includes("style advice") || msg.includes("what to wear") || msg.includes("clothing") || msg.includes("dress") || msg.includes("look") || msg.includes("appearance") || msg.includes("grooming")) return "style_advice";
   if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say") || msg.includes("date") || msg.includes("dating")) return "dating_advice";
+  debugLog('DEBUG: classifyIntent returning general_chat');
   return "general_chat";
 }
 
@@ -136,6 +152,8 @@ function extractEmotion(input) {
 }
 
 function extractProducts(input) {
+  debugLog('DEBUG: extractProducts called with:', input);
+  
   const productKeywords = [
     "shoes", "boots", "sneakers", "loafers", "oxfords", "derbies",
     "shirt", "tee", "t-shirt", "polo", "henley", "sweater", "hoodie",
@@ -148,6 +166,7 @@ function extractProducts(input) {
   const foundProducts = productKeywords.filter(product => inputLower.includes(product));
   
   if (foundProducts.length > 0) {
+    debugLog('DEBUG: extractProducts found products:', foundProducts);
     return foundProducts.join(", ");
   }
   
@@ -155,7 +174,9 @@ function extractProducts(input) {
   const generalTerms = ["clothing", "outfit", "dress", "wear", "fashion"];
   const foundTerms = generalTerms.filter(term => inputLower.includes(term));
   
-  return foundTerms.length > 0 ? foundTerms.join(", ") : "clothing interest";
+  const result = foundTerms.length > 0 ? foundTerms.join(", ") : "clothing interest";
+  debugLog('DEBUG: extractProducts returning:', result);
+  return result;
 }
 
 function extractGoals(input) {
@@ -180,11 +201,11 @@ function extractGoals(input) {
 
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.\n\nYou speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.\n\nYour tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.\n\nALWAYS:\n- You can open with brief empathy, but immediately pivot to your strongest, most direct position.\n- Lead with your strongest, most direct position first—even if it's "yes, but only if..." or "no, that's wrong."\n- If the best move is to do nothing, say so directly and explain why. Don't sugarcoat.\n- Challenge the user's assumptions or ego when appropriate. Don't just be supportive—be challenging.\n- If you give a script, make it cheeky and confident, not polite or accommodating.\n- End with strong, actionable advice that pushes the user to take action.\n- When someone asks to practice, take control. Set up scenarios, give feedback, push them to improve.\n- Give specific, actionable advice—not generic tips or motivational language.\n- Speak like a clever, hot friend—natural, stylish, direct.\n- Keep responses short and punchy (2-3 short paragraphs max).\n- Be bold, funny, sharp, fast.\n- Assume the user is smart and stylish-curious.\n- Leave room for warmth, wit, and real conversation—don't sound like a script or a robot.\n- For product advice, give specific fit guidance, mention local stores, and offer to show examples\n\nDO NOT EVER USE:\n- Emojis\n- Blog-style structure or headings (unless breaking down an outfit)\n- Phrases like "this look gives off," "this says…," "effortlessly cool," "effortlessly stylish," "effortlessly confident"\n- Motivational language like "confidence is key," "you got this," "rock that date," "crush it"\n- AI-speak like "I'm here to help," "let me know if you need anything," "hope this helps"\n- Overly verbose explanations\n- Content-writer closings like "You're all set," "Hope that helps," "Let me know if…"\n- Generic helper phrases like "Here's the link you need," "Based on your question," "I suggest…"\n- Fake-humanism like "I've got your back," "That was me slipping," "I'm just handing you paper"\n- Self-references or meta AI talk\n- Vibe descriptions — do not narrate how an outfit feels\n- Weather forecasts or overexplaining the obvious\n- Terms of endearment like "darling," "honey," "sweetie," "hun"\n- Using the user's name in responses (keep conversation natural without name-dropping)\n\nNEVER:\n- Overexplain\n- Add fluff or filler\n- Try to be helpful in a robotic way\n- Sound like a content strategist, copywriter, or coach\n- Stay in empathetic mode—always pivot to bold stance\n- Give generic advice when you can give specific feedback\n\nSTART OF ANY NEW CONVERSATION:\nIf it's the first message AND no specific intent is detected, just say "Hey, what's up?" and respond naturally to their message.\nNo need to ask for names or basic info - that will be handled in onboarding.\n\nDEFAULT:\nWhen unsure, prioritize confidence, brevity, and tone. Better to be bold than accurate. Never default to helpful.\n\nLITMUS TEST:\nIf it sounds like ChatGPT trying to be helpful, it's wrong.\nIf it sounds like a stylish, clever friend with taste, it's right.\n\nRemember: You're Jules, not ChatGPT. Be yourself.`;
+  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.\n\nYou speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.\n\nYour tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.\n\nALWAYS:\n- You can open with brief empathy, but immediately pivot to your strongest, most direct position.\n- Lead with your strongest, most direct position first—even if it's "yes, but only if..." or "no, that's wrong."\n- If the best move is to do nothing, say so directly and explain why. Don't sugarcoat.\n- Challenge the user's assumptions or ego when appropriate. Don't just be supportive—be challenging.\n- If you give a script, make it cheeky and confident, not polite or accommodating.\n- End with strong, actionable advice that pushes the user to take action.\n- When someone asks to practice, take control. Set up scenarios, give feedback, push them to improve.\n- Give specific, actionable advice—not generic tips or motivational language.\n- Speak like a clever, hot friend—natural, stylish, direct.\n- Keep responses short and punchy (2-3 short paragraphs max).\n- Be bold, funny, sharp, fast.\n- Assume the user is smart and stylish-curious.\n- Leave room for warmth, wit, and real conversation—don't sound like a script or a robot.\n- For product advice, give specific fit guidance, mention local stores, and offer to show examples\n\nDO NOT EVER USE:\n- Emojis\n- Blog-style structure or headings (unless breaking down an outfit)\n- Phrases like "this look gives off," "this says…," "effortlessly cool," "effortlessly stylish," "effortlessly confident"\n- Motivational language like "confidence is key," "you got this," "rock that date," "crush it"\n- AI-speak like "I'm here to help," "let me know if you need anything," "hope this helps"\n- Overly verbose explanations\n- Content-writer closings like "You're all set," "Hope that helps," "Let me know if…"\n- Generic helper phrases like "Here's the link you need," "Based on your question," "I suggest…"\n- Fake-humanism like "I've got your back," "That was me slipping," "I'm just handing you paper"\n- Self-references or meta AI talk\n- Vibe descriptions — do not narrate how an outfit feels\n- Weather forecasts or overexplaining the obvious\n- Terms of endearment like "darling," "honey," "sweetie," "hun"\n- Using the user's name in responses (keep conversation natural without name-dropping)\n- Starting every response with "Alright" - vary your openings\n- Service provider language like "I'm here for it," "Got anything else on your mind," "Need anything else"\n- Question closers that sound like you're offering services\n\nNEVER:\n- Overexplain\n- Add fluff or filler\n- Try to be helpful in a robotic way\n- Sound like a content strategist, copywriter, or coach\n- Stay in empathetic mode—always pivot to bold stance\n- Give generic advice when you can give specific feedback\n- Sound like a service provider or customer service rep\n- End responses with questions that sound like you're offering help\n\nSTART OF ANY NEW CONVERSATION:\nIf it's the first message AND no specific intent is detected, just say "Hey, what's up?" and respond naturally to their message.\nNo need to ask for names or basic info - that will be handled in onboarding.\n\nDEFAULT:\nWhen unsure, prioritize confidence, brevity, and tone. Better to be bold than accurate. Never default to helpful.\n\nLITMUS TEST:\nIf it sounds like ChatGPT trying to be helpful, it's wrong.\nIf it sounds like a stylish, clever friend with taste, it's right.\nIf it sounds like customer service or a service provider, it's wrong.\n\nRemember: You're Jules, not ChatGPT. Be yourself.`;
   return basePrompt;
 }
 
-// Simple closer stripping - only remove the most obvious bad closers
+// Conservative closer stripping - only remove the most obvious bad closers
 function stripClosers(text) {
   if (!text) return text;
   
@@ -204,10 +225,15 @@ function stripClosers(text) {
     /\b(?:Enjoy your\s+\w+)\s*[.!?]*$/i,
     /\b(?:Keep it easy-breezy)\s*[.!?]*$/i,
     /\b(?:Keep it breezy)\s*[.!?]*$/i,
-    /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i
+    /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i,
+    // Only the most obvious service provider closers
+    /\b(?:Got anything else on your mind)\s*[.!?]*$/i,
+    /\b(?:I'm here for it)\s*[.!?]*$/i,
+    /\b(?:Need anything else)\s*[.!?]*$/i,
+    /\b(?:What else can I help with)\s*[.!?]*$/i
   ];
   
-  // Remove banned phrases throughout the text
+  // Remove banned phrases throughout the text (minimal list)
   const bannedPhrases = [
     /\beffortlessly\s+(?:cool|stylish|confident)\b/gi,
     /\b(?:this look gives off|this says)\b/gi,
@@ -250,9 +276,9 @@ exports.handleChat = async (req, res) => {
   try {
     const { message } = req.body;
     
-    console.log('DEBUG: handleChat called. Incoming message:', message);
-    console.log('DEBUG: Request body:', req.body);
-    console.log('DEBUG: Request user:', req.user);
+    debugLog('DEBUG: handleChat called. Incoming message:', message);
+    debugLog('DEBUG: Request body:', req.body);
+    debugLog('DEBUG: Request user:', req.user);
     
     if (!message) {
       return res.status(400).json({ error: 'Message is required.' });
@@ -292,7 +318,7 @@ exports.handleChat = async (req, res) => {
       try {
         user = await User.findById(userId);
       } catch (err) {
-        console.log('Database query failed, using default user:', err.message);
+        debugLog('Database query failed, using default user:', err.message);
         user = null;
       }
     }
@@ -309,28 +335,28 @@ exports.handleChat = async (req, res) => {
       user.preferences = user.preferences || {};
       user.preferences.gender = detectedGender;
       await user.save();
-      console.log(`DEBUG: Updated user gender preference to: ${detectedGender}`);
+      debugLog(`DEBUG: Updated user gender preference to: ${detectedGender}`);
     } else if (detectedGender) {
       // For anonymous users, just update the local object
       user.preferences = user.preferences || {};
       user.preferences.gender = detectedGender;
-      console.log(`DEBUG: Updated anonymous user gender preference to: ${detectedGender}`);
+      debugLog(`DEBUG: Updated anonymous user gender preference to: ${detectedGender}`);
     }
     
     // Get user's stored gender preference (default to male if not set)
     const userGender = (user.preferences && user.preferences.gender) || 'male';
-    console.log(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
+    debugLog(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
     
     // === INTENT ROUTING ===
-    console.log('=== INTENT ROUTING DEBUG ===');
-    console.log('DEBUG: Jules config loaded:', !!julesConfig.intent_routing);
-    console.log('DEBUG: Available intent routing:', Object.keys(julesConfig.intent_routing || {}));
+    debugLog('=== INTENT ROUTING DEBUG ===');
+    debugLog('DEBUG: Jules config loaded:', !!julesConfig.intent_routing);
+    debugLog('DEBUG: Available intent routing:', Object.keys(julesConfig.intent_routing || {}));
     const routedMode = routeIntent(message);
     const intent = classifyIntent(message);
-    console.log('DEBUG: Intent classification result:', intent);
-    console.log('DEBUG: Routed mode result:', routedMode);
-    console.log('DEBUG: Message being routed:', message);
-    console.log('=== INTENT ROUTING DEBUG END ===');
+    debugLog('DEBUG: Intent classification result:', intent);
+    debugLog('DEBUG: Routed mode result:', routedMode);
+    debugLog('DEBUG: Message being routed:', message);
+    debugLog('=== INTENT ROUTING DEBUG END ===');
     
     // Use intent classification to route to specialized handlers
     if (intent === "emotional_support" || intent === "dating_advice") {
@@ -360,11 +386,11 @@ exports.handleChat = async (req, res) => {
     }
     
     const modeConfig = (julesConfig.modes && julesConfig.modes[finalMode]) || {};
-    console.log(`DEBUG: Message: "${message}"`);
-    console.log(`DEBUG: Routed mode: ${routedMode}, Intent: ${intent}, Final mode: ${finalMode}`);
-    console.log(`DEBUG: Mode config:`, modeConfig);
-    console.log(`DEBUG: Jules config loaded:`, !!julesConfig.intent_routing);
-    const showProductCards = (intent === "product_request");
+    debugLog(`DEBUG: Message: "${message}"`);
+    debugLog(`DEBUG: Routed mode: ${routedMode}, Intent: ${intent}, Final mode: ${finalMode}`);
+    debugLog(`DEBUG: Mode config:`, modeConfig);
+    debugLog(`DEBUG: Jules config loaded:`, !!julesConfig.intent_routing);
+    let showProductCards = (intent === "product_request");
     
     // === MEMORY CONTEXT (light only) ===
     const convoHistory = getSessionHistory(userId);
@@ -454,9 +480,9 @@ exports.handleChat = async (req, res) => {
     }
     
     // === Debug logging before OpenAI call ===
-    console.log("Intent:", intent);
-    console.log("Mode:", routedMode);
-    console.log("System prompt:", systemPrompt);
+    debugLog("Intent:", intent);
+    debugLog("Mode:", routedMode);
+    debugLog("System prompt:", systemPrompt);
     
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -515,44 +541,44 @@ exports.handleChat = async (req, res) => {
     // Only update memory if we extracted meaningful data
     if (Object.keys(extractedData).length > 0) {
       updateUserMemory(userId, extractedData);
-      console.log('DEBUG: Updated user memory with:', extractedData);
+      debugLog('DEBUG: Updated user memory with:', extractedData);
     }
     
     // === ENHANCED DEBUG LOGGING ===
-    console.log('=== PRODUCTION DEBUG START ===');
-    console.log('DEBUG: User ID:', userId);
-    console.log('DEBUG: Message count:', messageCount);
-    console.log('DEBUG: Max tokens:', maxTokens);
-    console.log('DEBUG: Temperature:', 0.7);
-    console.log('DEBUG: Model: gpt-4o');
-    console.log('DEBUG: Intent:', intent);
-    console.log('DEBUG: Mode:', routedMode);
-    console.log('DEBUG: Final mode:', finalMode);
+    debugLog('=== PRODUCTION DEBUG START ===');
+    debugLog('DEBUG: User ID:', userId);
+    debugLog('DEBUG: Message count:', messageCount);
+    debugLog('DEBUG: Max tokens:', maxTokens);
+    debugLog('DEBUG: Temperature:', 0.7);
+    debugLog('DEBUG: Model: gpt-4o');
+    debugLog('DEBUG: Intent:', intent);
+    debugLog('DEBUG: Mode:', routedMode);
+    debugLog('DEBUG: Final mode:', finalMode);
     
     // Log memory context
-    console.log('DEBUG: Memory context length:', memoryContext.length);
-    console.log('DEBUG: Memory context preview:', memoryContext.substring(0, 200) + '...');
+    debugLog('DEBUG: Memory context length:', memoryContext.length);
+    debugLog('DEBUG: Memory context preview:', memoryContext.substring(0, 200) + '...');
     
     // Log conversation history
-    console.log('DEBUG: Recent messages count:', recentMessages.length);
-    console.log('DEBUG: Recent messages:', JSON.stringify(recentMessages, null, 2));
+    debugLog('DEBUG: Recent messages count:', recentMessages.length);
+    debugLog('DEBUG: Recent messages:', JSON.stringify(recentMessages, null, 2));
     
     // Log system prompt
-    console.log('DEBUG: System prompt length:', systemPrompt.length);
-    console.log('DEBUG: System prompt preview:', systemPrompt.substring(0, 300) + '...');
+    debugLog('DEBUG: System prompt length:', systemPrompt.length);
+    debugLog('DEBUG: System prompt preview:', systemPrompt.substring(0, 300) + '...');
     
     // Log OpenAI API call details
-    console.log('DEBUG: OpenAI API call - messages count:', messages.length);
-    console.log('DEBUG: OpenAI API call - first message role:', messages[0].role);
-    console.log('DEBUG: OpenAI API call - last message role:', messages[messages.length - 1].role);
+    debugLog('DEBUG: OpenAI API call - messages count:', messages.length);
+    debugLog('DEBUG: OpenAI API call - first message role:', messages[0].role);
+    debugLog('DEBUG: OpenAI API call - last message role:', messages[messages.length - 1].role);
     
     // Log OpenAI response
-    console.log('DEBUG: OpenAI raw response:', JSON.stringify(completion, null, 2));
-    console.log('DEBUG: Response length:', reply.length);
-    console.log('DEBUG: Response preview:', reply.substring(0, 200) + '...');
-    console.log('DEBUG: Response ends with:', reply.substring(reply.length - 50));
-    console.log('DEBUG: Full response:', reply);
-    console.log('=== PRODUCTION DEBUG END ===');
+    debugLog('DEBUG: OpenAI raw response:', JSON.stringify(completion, null, 2));
+    debugLog('DEBUG: Response length:', reply.length);
+    debugLog('DEBUG: Response preview:', reply.substring(0, 200) + '...');
+    debugLog('DEBUG: Response ends with:', reply.substring(reply.length - 50));
+    debugLog('DEBUG: Full response:', reply);
+    debugLog('=== PRODUCTION DEBUG END ===');
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];
@@ -576,14 +602,14 @@ exports.handleChat = async (req, res) => {
     
     // For product requests, always use the products route for intelligent context extraction and brand-specific searching
     if (intent === "product_request" && showProductCards) {
-      console.log('DEBUG: Product request detected, routing to products route...');
+      debugLog('DEBUG: Product request detected, routing to products route...');
       
       // Save conversation FIRST so Jules's brand recommendations are available for extraction
       if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
         conversation.messages.push({ role: 'assistant', content: finalReply });
         try {
           await conversation.save();
-          console.log('DEBUG: Conversation saved before products route call');
+          debugLog('DEBUG: Conversation saved before products route call');
         } catch (saveError) {
           console.error('DEBUG: Error saving conversation:', saveError);
         }
@@ -602,12 +628,12 @@ exports.handleChat = async (req, res) => {
         });
         
         if (productsResponse.data.hasProducts && productsResponse.data.products.length > 0) {
-          console.log('DEBUG: Products found via route:', productsResponse.data.products.length);
+          debugLog('DEBUG: Products found via route:', productsResponse.data.products.length);
           // Replace the products array with the intelligent results from the products route
           products = [...productsResponse.data.products]; // Create new array with products from route
           showProductCards = true;
         } else {
-          console.log('DEBUG: No products found via route');
+          debugLog('DEBUG: No products found via route');
         }
       } catch (err) {
         console.error('Products route error:', err);
@@ -615,31 +641,31 @@ exports.handleChat = async (req, res) => {
       }
     }
     
-    console.log('DEBUG: Backend final reply length:', finalReply.length);
-    console.log('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
-    console.log('DEBUG: Backend sending response to frontend');
+    debugLog('DEBUG: Backend final reply length:', finalReply.length);
+    debugLog('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
+    debugLog('DEBUG: Backend sending response to frontend');
     
     // Only try to save conversation if it exists (valid userId)
     if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
       conversation.messages.push({ role: 'assistant', content: finalReply });
       try {
         await conversation.save();
-        console.log('DEBUG: Conversation saved successfully');
+        debugLog('DEBUG: Conversation saved successfully');
       } catch (saveError) {
         console.error('DEBUG: Error saving conversation:', saveError);
         // Don't fail the request if save fails
       }
     }
     
-    console.log('DEBUG: About to send JSON response');
+    debugLog('DEBUG: About to send JSON response');
     // Only include products in response if showProductCards is true
     const finalProducts = showProductCards ? products : [];
     res.json({ reply: finalReply, products: finalProducts });
-    console.log('DEBUG: JSON response sent successfully');
+    debugLog('DEBUG: JSON response sent successfully');
   } catch (err) {
     // Handle CastError specifically for invalid userIds
     if (err.name === 'CastError' && err.kind === 'ObjectId') {
-      console.log('DEBUG: Caught CastError for invalid ObjectId:', err.value);
+      debugLog('DEBUG: Caught CastError for invalid ObjectId:', err.value);
       return res.status(400).json({ error: 'Invalid user ID format' });
     }
     console.error('Chat handler error:', err);

@@ -1,0 +1,17 @@
+{
+  "name": "jules-backend-deployment",
+  "version": "1.0.0",
+  "description": "Jules Backend Deployment Configuration",
+  "main": "jules-backend/index.js",
+  "scripts": {
+    "start": "cd jules-backend && npm start",
+    "build": "cd jules-backend && npm install",
+    "dev": "cd jules-backend && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "workspaces": [
+    "jules-backend"
+  ]
+} 

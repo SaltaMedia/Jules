@@ -2,8 +2,11 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
 });
 console.log('Starting server...');
-require('dotenv').config();
-console.log('dotenv loaded');
+// Only load dotenv in development (not production)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+  console.log('dotenv loaded');
+}
 
 const express = require('express');
 console.log('express loaded');
