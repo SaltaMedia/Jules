@@ -81,14 +81,20 @@ function detectGenderContext(message) {
 function classifyIntent(input) {
   const msg = input.toLowerCase();
   
+  console.log('DEBUG: classifyIntent called with:', input);
+  
   // Vague chat detection moved to main handler for escalating tone
   
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
   if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("try this")) return "practice";
   // Product requests take priority over style advice
-  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants") || msg.includes("sneakers")) return "product_request";
+  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants") || msg.includes("sneakers") || msg.includes("blazer") || msg.includes("jacket") || msg.includes("suit") || msg.includes("coat") || msg.includes("t-shirt") || msg.includes("tshirt") || msg.includes("shorts") || msg.includes("socks") || msg.includes("kicks")) {
+    console.log('DEBUG: classifyIntent detected product_request via keywords');
+    return "product_request";
+  }
   if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style") || msg.includes("pack") || msg.includes("travel") || msg.includes("europe") || msg.includes("trip") || msg.includes("what should i wear") || msg.includes("what should i rock") || msg.includes("outfit advice") || msg.includes("fashion advice") || msg.includes("style advice") || msg.includes("what to wear") || msg.includes("clothing") || msg.includes("dress") || msg.includes("look") || msg.includes("appearance") || msg.includes("grooming")) return "style_advice";
   if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say") || msg.includes("date") || msg.includes("dating")) return "dating_advice";
+  console.log('DEBUG: classifyIntent returning general_chat');
   return "general_chat";
 }
 
@@ -136,6 +142,8 @@ function extractEmotion(input) {
 }
 
 function extractProducts(input) {
+  console.log('DEBUG: extractProducts called with:', input);
+  
   const productKeywords = [
     "shoes", "boots", "sneakers", "loafers", "oxfords", "derbies",
     "shirt", "tee", "t-shirt", "polo", "henley", "sweater", "hoodie",
@@ -148,6 +156,7 @@ function extractProducts(input) {
   const foundProducts = productKeywords.filter(product => inputLower.includes(product));
   
   if (foundProducts.length > 0) {
+    console.log('DEBUG: extractProducts found products:', foundProducts);
     return foundProducts.join(", ");
   }
   
@@ -155,7 +164,9 @@ function extractProducts(input) {
   const generalTerms = ["clothing", "outfit", "dress", "wear", "fashion"];
   const foundTerms = generalTerms.filter(term => inputLower.includes(term));
   
-  return foundTerms.length > 0 ? foundTerms.join(", ") : "clothing interest";
+  const result = foundTerms.length > 0 ? foundTerms.join(", ") : "clothing interest";
+  console.log('DEBUG: extractProducts returning:', result);
+  return result;
 }
 
 function extractGoals(input) {
