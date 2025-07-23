@@ -43,7 +43,16 @@ app.use('/api', router);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Only apply session middleware to routes that need authentication
-app.use('/api/auth', session({ secret: 'jules_secret', resave: false, saveUninitialized: false }));
+const MongoStore = require('connect-mongo');
+app.use('/api/auth', session({ 
+  secret: 'jules_secret', 
+  resave: false, 
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    collectionName: 'sessions'
+  })
+}));
 app.use('/api/auth', passport.initialize());
 app.use('/api/auth', passport.session());
 
