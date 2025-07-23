@@ -1,31 +1,17 @@
 {
-  "name": "jules-backend",
+  "name": "jules-backend-deployment",
   "version": "1.0.0",
+  "description": "Jules Backend Deployment Configuration",
   "main": "jules-backend/index.js",
   "scripts": {
-    "start": "node jules-backend/index.js",
-    "dev": "nodemon jules-backend/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "cd jules-backend && npm start",
+    "build": "cd jules-backend && npm install",
+    "dev": "cd jules-backend && npm run dev"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "axios": "^1.10.0",
-    "bcryptjs": "^3.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^17.0.0",
-    "express": "^4.17.1",
-    "express-session": "^1.18.1",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.16.1",
-    "multer": "^2.0.1",
-    "openai": "^5.8.2",
-    "passport": "^0.6.0",
-    "passport-google-oauth20": "^2.0.0"
+  "engines": {
+    "node": ">=18.0.0"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
-  }
+  "workspaces": [
+    "jules-backend"
+  ]
 } 

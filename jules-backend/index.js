@@ -2,12 +2,10 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
 });
 console.log('Starting server...');
-// Only load dotenv in development
+// Only load dotenv in development (not production)
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
-  console.log('dotenv loaded (development)');
-} else {
-  console.log('dotenv skipped (production)');
+  console.log('dotenv loaded');
 }
 
 const express = require('express');
@@ -48,16 +46,7 @@ app.use('/api', router);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Only apply session middleware to routes that need authentication
-const MongoStore = require('connect-mongo');
-app.use('/api/auth', session({ 
-  secret: 'jules_secret', 
-  resave: false, 
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    collectionName: 'sessions'
-  })
-}));
+app.use('/api/auth', session({ secret: 'jules_secret', resave: false, saveUninitialized: false }));
 app.use('/api/auth', passport.initialize());
 app.use('/api/auth', passport.session());
 

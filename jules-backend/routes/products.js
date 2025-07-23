@@ -222,12 +222,12 @@ router.post('/', auth, async (req, res) => {
           });
           
           // Process results for this brand
-          const forbidden = context.isGift 
+          let forbidden = context.isGift 
             ? /kids|child|children/i
             : /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
           
-          const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
-          const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
+          let nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
+          let excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
           
           const brandProducts = (response.data.items || [])
             .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
@@ -266,12 +266,12 @@ router.post('/', auth, async (req, res) => {
       });
       
       // Filter and process results for fallback search
-      const forbidden = context.isGift 
+      let forbidden = context.isGift 
         ? /kids|child|children/i
         : /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
       
-      const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
-      const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
+      let nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr|fairfield|university|bookstore|jewelry|vintage/i;
+      let excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
       
       allProducts = (response.data.items || [])
         .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
