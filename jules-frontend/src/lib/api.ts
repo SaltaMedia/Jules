@@ -1,8 +1,8 @@
-// Use environment variables or fallback to smart detection
+// Use environment variables or fallback to localhost for development
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
     ? 'http://localhost:4000' 
-    : 'https://jules-bsnr.onrender.com');
+    : '');
 
 // Debug logging
 console.log('API_BASE_URL:', API_BASE_URL);
