@@ -48,10 +48,7 @@ function LoginInner() {
 
   const handleGoogleLogin = () => {
     // Redirect to backend Google OAuth using environment variable
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 
-      (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-        ? 'http://localhost:4000' 
-        : '');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {
       console.error('NEXT_PUBLIC_API_URL not configured');
       return;

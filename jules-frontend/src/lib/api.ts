@@ -1,4 +1,4 @@
-// Use environment variables or fallback to localhost for development
+// Use environment variables - no fallback for production
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
     ? 'http://localhost:4000' 
@@ -61,7 +61,7 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   } catch (error) {
     console.error('API request error:', error);
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:4000');
+      throw new Error('Cannot connect to server. Please check your connection and try again.');
     }
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('Request timed out. Please try again.');
@@ -169,7 +169,7 @@ export const upload = {
       return response.json();
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:4000');
+        throw new Error('Cannot connect to server. Please check your connection and try again.');
       }
       throw error;
     }
