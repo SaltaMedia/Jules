@@ -1,4 +1,3 @@
-require('dotenv').config();
 const { OpenAI } = require('openai');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
