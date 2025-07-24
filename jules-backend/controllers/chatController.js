@@ -343,12 +343,34 @@ exports.handleChat = async (req, res) => {
     const userGender = (user.preferences && user.preferences.gender) || 'male';
     debugLog(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
     
-    // === INTENT ROUTING ===
+    // === LOAD CONVERSATION HISTORY FIRST ===
+    let recentMessages = [];
+    let conversation = null;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      conversation = await Conversation.findOne({ userId });
+      if (!conversation) {
+        conversation = new Conversation({ userId, messages: [] });
+      }
+      // Load conversation history for context
+      recentMessages = conversation.messages.slice(-10);
+    } else {
+      // For invalid userIds (like test_user), use session memory to track conversation
+      const sessionHistory = getSessionHistory(userId);
+      recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
+    }
+    
+    // Create context-aware message for intent classification
+    const conversationContext = recentMessages.map(msg => msg.content).join(' ');
+    const contextAwareMessage = `${conversationContext} ${message}`.trim();
+    
+    // === INTENT ROUTING WITH CONTEXT ===
     debugLog('=== INTENT ROUTING DEBUG ===');
     debugLog('DEBUG: Jules config loaded:', !!julesConfig.intent_routing);
     debugLog('DEBUG: Available intent routing:', Object.keys(julesConfig.intent_routing || {}));
-    const routedMode = routeIntent(message);
-    const intent = classifyIntent(message);
+    debugLog('DEBUG: Conversation context length:', conversationContext.length);
+    debugLog('DEBUG: Context-aware message:', contextAwareMessage.substring(0, 200) + '...');
+    const routedMode = routeIntent(contextAwareMessage);
+    const intent = classifyIntent(contextAwareMessage);
     debugLog('DEBUG: Intent classification result:', intent);
     debugLog('DEBUG: Routed mode result:', routedMode);
     debugLog('DEBUG: Message being routed:', message);
@@ -410,15 +432,8 @@ exports.handleChat = async (req, res) => {
     }
     
     // === Assemble messages for OpenAI ===
-    let recentMessages = [];
-    let conversation = null;
+    // Add current message to conversation history
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      conversation = await Conversation.findOne({ userId });
-      if (!conversation) {
-        conversation = new Conversation({ userId, messages: [] });
-      }
-      // Load conversation history and add current message
-      recentMessages = conversation.messages.slice(-10);
       recentMessages.push({ role: 'user', content: message });
       // Add current message to conversation for persistence
       conversation.messages.push({ role: 'user', content: message });
@@ -426,8 +441,7 @@ exports.handleChat = async (req, res) => {
       await conversation.save();
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
-      const sessionHistory = getSessionHistory(userId);
-      recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
+      recentMessages.push({ role: 'user', content: message });
     }
     
     // Ensure all messages are proper objects and add current message
