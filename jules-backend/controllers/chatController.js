@@ -346,18 +346,36 @@ exports.handleChat = async (req, res) => {
     // === LOAD CONVERSATION HISTORY FIRST ===
     let recentMessages = [];
     let conversation = null;
+    let isNewSession = false;
+    
     if (mongoose.Types.ObjectId.isValid(userId)) {
       conversation = await Conversation.findOne({ userId });
       if (!conversation) {
         conversation = new Conversation({ userId, messages: [] });
+        isNewSession = true;
+      } else {
+        // Check if this is a new session (no recent messages in last 30 minutes)
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+        const lastMessage = conversation.messages[conversation.messages.length - 1];
+        if (!lastMessage || lastMessage.timestamp < thirtyMinutesAgo) {
+          isNewSession = true;
+          // Clear conversation for new session
+          conversation.messages = [];
+        }
       }
-      // Load conversation history for context
+      // Load conversation history for context (empty if new session)
       recentMessages = conversation.messages.slice(-10);
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
       const sessionHistory = getSessionHistory(userId);
+      if (sessionHistory.length === 0) {
+        isNewSession = true;
+      }
       recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
     }
+    
+    debugLog('DEBUG: Is new session:', isNewSession);
+    debugLog('DEBUG: Recent messages count:', recentMessages.length);
     
     // Create context-aware message for intent classification
     const conversationContext = recentMessages.map(msg => msg.content).join(' ');
@@ -468,6 +486,12 @@ exports.handleChat = async (req, res) => {
       systemPrompt += `\n\nUSER CONTEXT: New user, no profile. Ask for name and basic info.`;
     } else {
       systemPrompt += `\n\nUSER CONTEXT: Returning user, no profile. Respond naturally without re-introducing.`;
+    }
+    
+    // === NEW SESSION WELCOME MESSAGE ===
+    if (isNewSession && isFirstMessage) {
+      const userName = user && user.name ? user.name : 'there';
+      systemPrompt += `\n\nNEW SESSION: This is a new conversation session. Start with a simple greeting like "Hi ${userName}! What's going on?" Do not ask for basic info or introduce yourself extensively.`;
     }
     
     const messages = [
