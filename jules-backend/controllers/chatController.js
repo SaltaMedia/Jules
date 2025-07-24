@@ -1,7 +1,5 @@
-// Only load dotenv in development (not production)
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+// Always load dotenv (works in both dev and production)
+require('dotenv').config();
 const { OpenAI } = require('openai');
 
 // Debug logging helper - only log in development
