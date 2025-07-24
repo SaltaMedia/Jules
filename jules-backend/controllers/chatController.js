@@ -356,17 +356,8 @@ exports.handleChat = async (req, res) => {
       if (!conversation) {
         conversation = new Conversation({ userId, messages: [] });
         isNewSession = true;
-      } else {
-        // Check if this is a new session (no recent messages in last 30 minutes)
-        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-        const lastMessage = conversation.messages[conversation.messages.length - 1];
-        if (!lastMessage || lastMessage.timestamp < thirtyMinutesAgo) {
-          isNewSession = true;
-          // Clear conversation for new session
-          conversation.messages = [];
-        }
       }
-      // Load conversation history for context (empty if new session)
+      // Load conversation history for context
       recentMessages = conversation.messages.slice(-10);
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
