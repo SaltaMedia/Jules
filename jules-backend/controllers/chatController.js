@@ -490,10 +490,21 @@ exports.handleChat = async (req, res) => {
       systemPrompt = `CRITICAL: You are now in ${finalMode.toUpperCase()} MODE. ${modeConfig.style}\n\nIGNORE ALL OTHER INSTRUCTIONS. DO NOT USE MOTIVATIONAL LANGUAGE. DO NOT BE ENCOURAGING. BE DIRECT AND OPINIONATED.\n\n` + systemPrompt;
     }
     // === RESET LOGIC ===
-    if ((julesConfig.conversation_reset_keywords || []).some(k => message.toLowerCase().includes(k.toLowerCase()))) {
-      // Hard reset: clear session memory
+    const resetKeywords = ['new session', 'start over', 'reset', 'clear', 'fresh start', 'new chat'];
+    if (resetKeywords.some(k => message.toLowerCase().includes(k.toLowerCase()))) {
+      debugLog('DEBUG: Reset keyword detected, clearing conversation history');
+      // Clear MongoDB conversation
+      if (mongoose.Types.ObjectId.isValid(userId) && conversation) {
+        conversation.messages = [];
+        await conversation.save();
+        debugLog('DEBUG: MongoDB conversation cleared');
+      }
+      // Clear session memory
       addSessionMessage(userId, { role: 'system', content: '[RESET] New topic.' });
       systemPrompt += '\n[RESET] New topic.';
+      // Force new session
+      isNewSession = true;
+      recentMessages = [];
     }
     
     // === Assemble messages for OpenAI ===
@@ -586,14 +597,8 @@ exports.handleChat = async (req, res) => {
       products = [];
     }
 
-    // Add assistant's response to session memory and conversation history
+    // Add assistant's response to session memory
     addSessionMessage(userId, { role: "assistant", content: reply });
-    
-    // Save assistant's response to MongoDB conversation if using valid userId
-    if (mongoose.Types.ObjectId.isValid(userId) && conversation) {
-      conversation.messages.push({ role: 'assistant', content: reply });
-      await conversation.save();
-    }
     
     // Update user memory based on intent with enhanced extraction
     const extractedData = {};
