@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../jules-frontend"
+		},
+		{
+			"path": "../../public:"
+		}
+	],
+	"settings": {}
+}

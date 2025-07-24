@@ -21,20 +21,6 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
     fullContext += ` ${julesResponse}`;
   }
   
-  // If the user is asking "where can I buy one" or similar, look for the most recent product mentioned
-  const buyOnePattern = /(?:where can i buy|where to buy|buy|get|find).*(?:one|it|this|that)/i;
-  if (buyOnePattern.test(currentMessage.toLowerCase())) {
-    // Look for the most recent product mention in the conversation context
-    const recentProductMatch = contextText.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit|loafers|vans|necklace|ring|earrings|bracelet|jewelry|pendant|chain|button-down|button down|buttonup|button-up|polo|henley|sweater|hoodie|chinos|joggers|sweatpants|vest|waistcoat|backpack|bag)/gi);
-    if (recentProductMatch && recentProductMatch.length > 0) {
-      // Use the most recent product mentioned
-      const mostRecentProduct = recentProductMatch[recentProductMatch.length - 1];
-      console.log('DEBUG: User asking to buy "one" - most recent product:', mostRecentProduct);
-      // Override the product extraction to use this specific product
-      fullContext = `${fullContext} ${mostRecentProduct}`;
-    }
-  }
-  
   // Extract different types of products and brands
   const jewelryKeywords = /necklace|ring|earrings|bracelet|jewelry|pendant|chain/i;
   const clothingKeywords = /shirt|jeans|pants|shoes|jacket|dress|outfit|clothing/i;
@@ -89,9 +75,7 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
   }
   
   console.log('DEBUG: Final extracted brand:', extractedBrand);
-  console.log('DEBUG: Full context for product extraction:', fullContext.substring(0, 200) + '...');
-  const productMatch = fullContext.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit|loafers|vans|necklace|ring|earrings|bracelet|jewelry|pendant|chain|button-down|button down|buttonup|button-up|polo|henley|sweater|hoodie|chinos|joggers|sweatpants|vest|waistcoat|backpack|bag)/i);
-  console.log('DEBUG: Product match:', productMatch ? productMatch[0] : 'No product found');
+  const productMatch = fullContext.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit|loafers|vans|necklace|ring|earrings|bracelet|jewelry|pendant|chain)/i);
   
   // Determine product category
   let category = 'clothing';
@@ -395,7 +379,7 @@ router.get('/', auth, async (req, res) => {
               key: apiKey,
               cx: cseId,
               q: searchQuery,
-              num: 4, // Get 4 results per brand
+              num: 2, // Get 2 results per brand
               safe: 'active',
             },
           });
@@ -479,7 +463,9 @@ router.get('/', auth, async (req, res) => {
     }
     
     // After getting products from Google (before sending response):
-    // Removed overly restrictive shirt-specific filtering
+    if (/shirt|button.?up|short.?sleeve/i.test(message)) {
+      allProducts = allProducts.filter(p => /shirt|button.?up|short.?sleeve/i.test(p.title + ' ' + p.description));
+    }
 
     console.log('DEBUG: Found total products (GET):', allProducts.length);
     

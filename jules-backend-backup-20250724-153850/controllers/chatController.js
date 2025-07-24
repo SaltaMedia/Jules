@@ -93,9 +93,9 @@ function classifyIntent(input) {
   
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
   if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("try this")) return "practice";
-  // Product requests - only trigger for explicit purchase intent
-  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("where to buy") || msg.includes("shop for") || msg.includes("find me") || msg.includes("get me") || msg.includes("purchase") || msg.includes("order")) {
-    debugLog('DEBUG: classifyIntent detected product_request via purchase keywords');
+  // Product requests take priority over style advice
+  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants") || msg.includes("sneakers") || msg.includes("blazer") || msg.includes("jacket") || msg.includes("suit") || msg.includes("coat") || msg.includes("t-shirt") || msg.includes("tshirt") || msg.includes("shorts") || msg.includes("socks") || msg.includes("kicks")) {
+    debugLog('DEBUG: classifyIntent detected product_request via keywords');
     return "product_request";
   }
   if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style") || msg.includes("pack") || msg.includes("travel") || msg.includes("europe") || msg.includes("trip") || msg.includes("what should i wear") || msg.includes("what should i rock") || msg.includes("outfit advice") || msg.includes("fashion advice") || msg.includes("style advice") || msg.includes("what to wear") || msg.includes("clothing") || msg.includes("dress") || msg.includes("look") || msg.includes("appearance") || msg.includes("grooming")) return "style_advice";
@@ -235,8 +235,7 @@ function stripClosers(text) {
     /\beffortlessly\s+(?:cool|stylish|confident)\b/gi,
     /\b(?:this look gives off|this says)\b/gi,
     /\b(?:casual yet put-together)\b/gi,
-    /\b(?:you'll look effortlessly)\b/gi,
-    /\bjuicy\b/gi
+    /\b(?:you'll look effortlessly)\b/gi
   ];
   
   bannedPhrases.forEach(pattern => {
@@ -378,8 +377,8 @@ exports.handleChat = async (req, res) => {
             debugLog('DEBUG: Cleared conversation for new session (30+ min gap)');
           }
         }
-            // Load conversation history for context (empty if new session)
-    recentMessages = conversation.messages.slice(-10);
+        // Load conversation history for context (empty if new session)
+        recentMessages = conversation.messages.slice(-10);
         debugLog('DEBUG: Loaded recent messages from database:', recentMessages.length);
       } catch (err) {
         debugLog('DEBUG: Error loading conversation from database:', err.message);
@@ -650,13 +649,18 @@ exports.handleChat = async (req, res) => {
       products = [];
     }
 
-    // Add assistant's response to session memory (avoid duplicates)
-    const lastSessionMessage = getSessionHistory(userId).slice(-1)[0];
-    if (!lastSessionMessage || lastSessionMessage.content !== reply) {
-      addSessionMessage(userId, { role: "assistant", content: reply });
-      debugLog('DEBUG: Added assistant response to session memory');
-    } else {
-      debugLog('DEBUG: Assistant response already exists in session memory, skipping add');
+    // Add assistant's response to session memory and conversation history
+    addSessionMessage(userId, { role: "assistant", content: reply });
+    
+    // Save assistant's response to MongoDB conversation if using valid userId
+    if (mongoose.Types.ObjectId.isValid(userId) && conversation) {
+      conversation.messages.push({ role: 'assistant', content: reply });
+      try {
+        await conversation.save();
+        debugLog('DEBUG: Saved assistant response to database conversation');
+      } catch (err) {
+        debugLog('DEBUG: Error saving assistant response to database:', err.message);
+      }
     }
     
     // Update user memory based on intent with enhanced extraction
@@ -755,6 +759,17 @@ exports.handleChat = async (req, res) => {
     if (intent === "product_request" && showProductCards) {
       debugLog('DEBUG: Product request detected, routing to products route...');
       
+      // Save conversation FIRST so Jules's brand recommendations are available for extraction
+      if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
+        conversation.messages.push({ role: 'assistant', content: finalReply });
+        try {
+          await conversation.save();
+          debugLog('DEBUG: Conversation saved before products route call');
+        } catch (saveError) {
+          debugLog('DEBUG: Error saving conversation before products route:', saveError.message);
+        }
+      }
+      
       try {
         const productsResponse = await axios.post(`${req.protocol}://${req.get('host')}/api/products`, {
           message,
@@ -785,14 +800,14 @@ exports.handleChat = async (req, res) => {
     debugLog('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
     debugLog('DEBUG: Backend sending response to frontend');
     
-    // Save conversation to database (only once)
+    // Only try to save conversation if it exists (valid userId)
     if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
       conversation.messages.push({ role: 'assistant', content: finalReply });
       try {
         await conversation.save();
-        debugLog('DEBUG: Conversation saved successfully');
+        debugLog('DEBUG: Final conversation saved successfully');
       } catch (saveError) {
-        debugLog('DEBUG: Error saving conversation:', saveError.message);
+        debugLog('DEBUG: Error saving final conversation:', saveError.message);
         // Don't fail the request if save fails
       }
     }

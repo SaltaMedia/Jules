@@ -8,23 +8,23 @@ const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRe
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Conversation-specific system prompt
-function getConversationSystemPrompt(userGender = 'male') {
+// Dating-specific system prompt
+function getDatingSystemPrompt(userGender = 'male') {
   return `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.
 
-You speak like a flirty, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.
+You speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.
 
 Your tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.
 
-CASUAL CONVERSATION MODE - MATCH GPT JULES PATTERN:
-- Be conversational and natural
-- Keep the banter going
-- Be witty and engaging
-- Don't try to give advice unless specifically asked
-- Keep responses short and punchy (1-2 short paragraphs max)
+DATING ADVICE MODE - MATCH GPT JULES PATTERN:
+- Give strong, specific advice FIRST (like the ghosting example)
+- Build confidence and reframe situations positively
+- Challenge the user's assumptions or ego when appropriate
+- Give specific, actionable advice—not generic tips
+- Keep responses short and punchy (2-3 short paragraphs max)
 - Be bold, funny, sharp, fast
-- Assume the user just wants to chat and hang out
-- Ask follow-up questions to keep conversation flowing
+- Assume the user is smart and dating-curious
+- Lead the user with confidence, don't just ask questions
 
 DO NOT EVER USE:
 - Emojis
@@ -53,16 +53,17 @@ If it sounds like a stylish, clever friend with taste, it's right.
 Remember: You're Jules, not ChatGPT. Be yourself.`;
 }
 
-// Lighter closer stripping for casual conversation
-function stripConversationClosers(text) {
+// Aggressive closer stripping for dating advice
+function stripDatingClosers(text) {
   if (!text) return text;
   
   let result = text;
   
-  // Remove common AI closers (lighter than dating/practice)
+  // Remove common AI closers (more aggressive than main chat)
   const badClosers = [
     /\b(?:Alright,?\s*)/i,
     /\b(?:Party animal|champ|jet-setter|buddy|pal)\b/gi,
+    /\b(?:You got this|You've got this)\s*[.!?]*$/i,
     /\b(?:I'm here to help)\s*[.!?]*$/i,
     /\b(?:I'm here for you)\s*[.!?]*$/i,
     /\b(?:let me know how I can help)\s*[.!?]*$/i,
@@ -70,9 +71,23 @@ function stripConversationClosers(text) {
     /\b(?:what's on your mind next)\s*[.!?]*$/i,
     /\b(?:anything else)\s*[.!?]*$/i,
     /\b(?:any other questions)\s*[.!?]*$/i,
+    /\b(?:Have a fantastic time)\s*[.!?]*$/i,
+    /\b(?:Enjoy your\s+\w+)\s*[.!?]*$/i,
+    /\b(?:Keep it easy-breezy)\s*[.!?]*$/i,
+    /\b(?:Keep it breezy)\s*[.!?]*$/i,
+    /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i,
     /\b(?:You're all set)\s*[.!?]*$/i,
     /\b(?:Hope that helps)\s*[.!?]*$/i,
-    /\b(?:Let me know if)\s*[.!?]*$/i
+    /\b(?:Let me know if)\s*[.!?]*$/i,
+    /\b(?:Now go make)\s*[.!?]*$/i,
+    /\b(?:You're set)\s*[.!?]*$/i,
+    /\b(?:Keep it simple, keep it stylish)\s*[.!?]*$/i,
+    /\b(?:Go crush it)\s*[.!?]*$/i,
+    /\b(?:Rock that)\s*[.!?]*$/i,
+    /\b(?:Nail it)\s*[.!?]*$/i,
+    /\b(?:You're good to go)\s*[.!?]*$/i,
+    /\b(?:Ready to impress)\s*[.!?]*$/i,
+    /\b(?:Now go|Go get|Go turn|Go make)\s+\w+/i
   ];
   
   // Remove banned phrases throughout the text
@@ -102,8 +117,8 @@ function stripConversationClosers(text) {
   return result;
 }
 
-// Handle casual conversation requests
-exports.handleConversation = async (req, res) => {
+// Handle dating requests
+exports.handleDating = async (req, res) => {
   try {
     const { message } = req.body;
     
@@ -173,8 +188,8 @@ exports.handleConversation = async (req, res) => {
       recentMessages.push({ role: 'user', content: message });
     }
     
-    // Build system prompt for casual conversation
-    const systemPrompt = getConversationSystemPrompt(userGender);
+    // Build system prompt for dating
+    const systemPrompt = getDatingSystemPrompt(userGender);
     
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -185,21 +200,21 @@ exports.handleConversation = async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages,
-      max_tokens: 2000,
+      max_tokens: 3000,
       temperature: 0.7,
     });
     
     let reply = completion.choices[0].message.content;
     
-    // Lighter closer stripping for conversation
-    let cleanedReply = stripConversationClosers(reply);
+    // Aggressive closer stripping for dating
+    let cleanedReply = stripDatingClosers(reply);
     const finalReply = cleanedReply.trim();
     
     // Add to session memory
     addSessionMessage(userId, { role: "assistant", content: finalReply });
     
     // Update user memory
-    updateUserMemory(userId, { goals: "casual conversation" });
+    updateUserMemory(userId, { goals: "dating advice" });
     
     // Save conversation if valid userId
     if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
@@ -213,7 +228,7 @@ exports.handleConversation = async (req, res) => {
     
     res.json({ reply: finalReply, products: [] });
   } catch (err) {
-    console.error('Conversation handler error:', err);
+    console.error('Dating handler error:', err);
     return res.json({ reply: "Ugh, tech hiccup. But I'm still here—hit me again!", products: [] });
   }
 }; 

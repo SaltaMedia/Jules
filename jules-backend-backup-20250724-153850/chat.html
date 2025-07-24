@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat with Jules</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    #chat { border: 1px solid #ccc; padding: 20px; width: 600px; height: 500px; overflow-y: auto; margin-bottom: 10px; }
+    #input { width: 520px; }
+    .user { color: #0074D9; margin-bottom: 10px; }
+    .jules { color: #B10DC9; margin-bottom: 10px; }
+    .products {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .product { 
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 16px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .product img { 
+      width: 60px; 
+      height: 60px; 
+      object-fit: cover; 
+      margin-right: 10px; 
+      border-radius: 3px;
+    }
+    .product-info { flex: 1; }
+    .product-title { font-weight: bold; margin-bottom: 5px; }
+    .product-description { font-size: 0.9em; color: #666; margin-bottom: 5px; }
+    .product-price { font-weight: bold; color: #28a745; }
+    .product-link { 
+      color: #007bff; 
+      text-decoration: none; 
+      font-weight: bold;
+    }
+    .product-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Chat with Jules</h1>
+  <input id="token" placeholder="Paste your JWT token here" style="width: 600px;" />
+  <div id="chat"></div>
+  <input id="input" placeholder="Type your message..." />
+  <button onclick="sendMessage()">Send</button>
+  <script>
+    const chatDiv = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const tokenInput = document.getElementById('token');
+
+    function appendMessage(sender, text, products = []) {
+      const msg = document.createElement('div');
+      msg.className = sender;
+      msg.textContent = (sender === 'user' ? 'You: ' : 'Jules: ') + text;
+      chatDiv.appendChild(msg);
+      
+      // Add products if they exist
+      if (products && products.length > 0) {
+        const productsDiv = document.createElement('div');
+        productsDiv.className = 'products';
+        
+        products.forEach((product, index) => {
+          const productDiv = document.createElement('div');
+          productDiv.className = 'product';
+          
+          let productHtml = '';
+          
+          // Add image if available
+          if (product.image) {
+            productHtml += `<img src="${product.image}" alt="${product.title}" onerror="this.style.display='none'">`;
+          }
+          
+          productHtml += `
+            <div class="product-info">
+              <div class="product-title">
+                <a href="${product.link}" target="_blank" class="product-link">${product.title}</a>
+              </div>
+              ${product.description ? `<div class="product-description">${product.description}</div>` : ''}
+              ${product.price ? `<div class="product-price">${product.price}</div>` : ''}
+            </div>
+          `;
+          
+          productDiv.innerHTML = productHtml;
+          productsDiv.appendChild(productDiv);
+        });
+        
+        chatDiv.appendChild(productsDiv);
+      }
+      
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = input.value;
+      const token = tokenInput.value;
+      if (!message || !token) return;
+      appendMessage('user', message);
+      input.value = '';
+      const res = await fetch('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+      appendMessage('jules', data.reply || (data.error || 'No response'), data.products || []);
+    }
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html> 
