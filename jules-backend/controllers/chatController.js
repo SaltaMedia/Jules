@@ -420,6 +420,8 @@ exports.handleChat = async (req, res) => {
       // Load conversation history BEFORE adding the new message
       recentMessages = conversation.messages.slice(-10);
       conversation.messages.push({ role: 'user', content: message });
+      // Save the conversation to persist the new message
+      await conversation.save();
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
       const sessionHistory = getSessionHistory(userId);
@@ -501,8 +503,14 @@ exports.handleChat = async (req, res) => {
       products = [];
     }
 
-    // Add assistant's response to session memory
+    // Add assistant's response to session memory and conversation history
     addSessionMessage(userId, { role: "assistant", content: reply });
+    
+    // Save assistant's response to MongoDB conversation if using valid userId
+    if (mongoose.Types.ObjectId.isValid(userId) && conversation) {
+      conversation.messages.push({ role: 'assistant', content: reply });
+      await conversation.save();
+    }
     
     // Update user memory based on intent with enhanced extraction
     const extractedData = {};
