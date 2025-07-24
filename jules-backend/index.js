@@ -2,11 +2,9 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
 });
 console.log('Starting server...');
-// Only load dotenv in development (not production)
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-  console.log('dotenv loaded');
-}
+// Always load dotenv (works in both dev and production)
+require('dotenv').config();
+console.log('dotenv loaded');
 
 const express = require('express');
 console.log('express loaded');
@@ -36,7 +34,7 @@ app.use(express.json());
 // Configure CORS for production
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-rosy.vercel.app']
+    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-rosy.vercel.app', 'https://jules-production-2221.up.railway.app']
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   optionsSuccessStatus: 200
@@ -116,17 +114,19 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
 });
 
-// Connect to MongoDB Atlas
-console.log('Calling mongoose.connect...');
-mongoose.connect(process.env.MONGODB_URI)
-.then(() => {
-  console.log('Connected to MongoDB Atlas');
-  console.log('About to start server...');
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Start server first, then connect to MongoDB
+console.log('Starting server first...');
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  
+  // Now connect to MongoDB
+  console.log('Calling mongoose.connect...');
+  mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Connected to MongoDB Atlas');
+  })
+  .catch((err) => {
+    console.error('Failed to connect to MongoDB Atlas:', err);
+    // Don't exit - server can still run without DB for health checks
   });
-})
-.catch((err) => {
-  console.error('Failed to connect to MongoDB Atlas:', err);
-  process.exit(1);
 });
