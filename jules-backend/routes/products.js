@@ -21,6 +21,20 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
     fullContext += ` ${julesResponse}`;
   }
   
+  // If the user is asking "where can I buy one" or similar, look for the most recent product mentioned
+  const buyOnePattern = /(?:where can i buy|where to buy|buy|get|find).*(?:one|it|this|that)/i;
+  if (buyOnePattern.test(currentMessage.toLowerCase())) {
+    // Look for the most recent product mention in the conversation context
+    const recentProductMatch = contextText.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit|loafers|vans|necklace|ring|earrings|bracelet|jewelry|pendant|chain|button-down|button down|buttonup|button-up|polo|henley|sweater|hoodie|chinos|joggers|sweatpants|vest|waistcoat|backpack|bag)/gi);
+    if (recentProductMatch && recentProductMatch.length > 0) {
+      // Use the most recent product mentioned
+      const mostRecentProduct = recentProductMatch[recentProductMatch.length - 1];
+      console.log('DEBUG: User asking to buy "one" - most recent product:', mostRecentProduct);
+      // Override the product extraction to use this specific product
+      fullContext = `${fullContext} ${mostRecentProduct}`;
+    }
+  }
+  
   // Extract different types of products and brands
   const jewelryKeywords = /necklace|ring|earrings|bracelet|jewelry|pendant|chain/i;
   const clothingKeywords = /shirt|jeans|pants|shoes|jacket|dress|outfit|clothing/i;
@@ -30,14 +44,14 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
   console.log('DEBUG: Full context for brand extraction:', fullContext.substring(0, 200) + '...');
   
   // Check for brands in the full context
-  const brandMatch = fullContext.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/i);
+  const brandMatch = fullContext.match(/(rvca|suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/i);
   
   // PRIORITY: Look at Jules's response first if available
   let extractedBrands = [];
   if (julesResponse) {
     console.log('DEBUG: Checking Jules response for brands:', julesResponse.substring(0, 100) + '...');
     // Extract ALL brands mentioned in Jules's response
-    const brandMatches = julesResponse.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+    const brandMatches = julesResponse.match(/(rvca|suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
     if (brandMatches && brandMatches.length > 0) {
       // Remove duplicates and keep order
       extractedBrands = [...new Set(brandMatches)];
@@ -65,7 +79,7 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
     for (const msg of assistantMessages) {
       console.log('DEBUG: Checking message:', msg.content.substring(0, 100) + '...');
       // Extract all brands mentioned in this message
-      const brandMatches = msg.content.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+      const brandMatches = msg.content.match(/(rvca|suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
       if (brandMatches && brandMatches.length > 0) {
         extractedBrand = brandMatches[0];
         console.log('DEBUG: Found brand in assistant message:', extractedBrand);
@@ -75,7 +89,9 @@ function extractProductContext(conversation, currentMessage, julesResponse = nul
   }
   
   console.log('DEBUG: Final extracted brand:', extractedBrand);
-  const productMatch = fullContext.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit|loafers|vans|necklace|ring|earrings|bracelet|jewelry|pendant|chain)/i);
+  console.log('DEBUG: Full context for product extraction:', fullContext.substring(0, 200) + '...');
+  const productMatch = fullContext.match(/(shorts|shoes|jacket|shirt|tee|t-shirt|graphic|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit|loafers|vans|necklace|ring|earrings|bracelet|jewelry|pendant|chain|button-down|button down|buttonup|button-up|polo|henley|sweater|hoodie|chinos|joggers|sweatpants|vest|waistcoat|backpack|bag)/i);
+  console.log('DEBUG: Product match:', productMatch ? productMatch[0] : 'No product found');
   
   // Determine product category
   let category = 'clothing';
@@ -184,7 +200,7 @@ router.post('/', auth, async (req, res) => {
     // Get all brands mentioned in Jules's response
     const allBrands = [];
     if (julesResponse) {
-      const brandMatches = julesResponse.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+      const brandMatches = julesResponse.match(/(rvca|suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
       if (brandMatches && brandMatches.length > 0) {
         allBrands.push(...new Set(brandMatches));
       }
@@ -299,6 +315,11 @@ router.post('/', auth, async (req, res) => {
         }));
     }
     
+    // After getting products from Google (before sending response):
+    if (/shirt|button.?up|short.?sleeve/i.test(message)) {
+      allProducts = allProducts.filter(p => /shirt|button.?up|short.?sleeve/i.test(p.title + ' ' + p.description));
+    }
+
     console.log('DEBUG: Found total products:', allProducts.length);
     
     res.json({ 
@@ -342,7 +363,7 @@ router.get('/', auth, async (req, res) => {
     // Get all brands mentioned in Jules's response
     const allBrands = [];
     if (requestBody.julesResponse) {
-      const brandMatches = requestBody.julesResponse.match(/(suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
+      const brandMatches = requestBody.julesResponse.match(/(rvca|suitsupply|uniqlo|j\.crew|jcrew|nike|adidas|levi|brooks|asics|ten thousand|lululemon|target|amazon|mejuri|gorjana|missoma|catbird|ana luisa|pandora|kendra scott|tiffany|cartier|bellroy|shinola|brooks brothers|nudie|apc|acne.*studios|rag.*bone|naked.*famous)/gi);
       if (brandMatches && brandMatches.length > 0) {
         allBrands.push(...new Set(brandMatches));
       }
@@ -374,7 +395,7 @@ router.get('/', auth, async (req, res) => {
               key: apiKey,
               cx: cseId,
               q: searchQuery,
-              num: 2, // Get 2 results per brand
+              num: 4, // Get 4 results per brand
               safe: 'active',
             },
           });
@@ -457,6 +478,9 @@ router.get('/', auth, async (req, res) => {
         }));
     }
     
+    // After getting products from Google (before sending response):
+    // Removed overly restrictive shirt-specific filtering
+
     console.log('DEBUG: Found total products (GET):', allProducts.length);
     
     res.json({ 

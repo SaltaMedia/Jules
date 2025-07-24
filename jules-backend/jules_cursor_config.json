@@ -26,7 +26,6 @@
     "shoes": "style_advice",
     "buy": "product_request",
     "link": "product_request",
-    "recommend": "product_request",
     "show me": "product_request",
     "shop": "product_request",
     "where to buy": "product_request"

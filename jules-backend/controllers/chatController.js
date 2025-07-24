@@ -93,9 +93,9 @@ function classifyIntent(input) {
   
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
   if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("try this")) return "practice";
-  // Product requests take priority over style advice
-  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("jeans") || msg.includes("shoes") || msg.includes("shirt") || msg.includes("pants") || msg.includes("sneakers") || msg.includes("blazer") || msg.includes("jacket") || msg.includes("suit") || msg.includes("coat") || msg.includes("t-shirt") || msg.includes("tshirt") || msg.includes("shorts") || msg.includes("socks") || msg.includes("kicks")) {
-    debugLog('DEBUG: classifyIntent detected product_request via keywords');
+  // Product requests - only trigger for explicit purchase intent
+  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("where to buy") || msg.includes("shop for") || msg.includes("find me") || msg.includes("get me") || msg.includes("purchase") || msg.includes("order")) {
+    debugLog('DEBUG: classifyIntent detected product_request via purchase keywords');
     return "product_request";
   }
   if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style") || msg.includes("pack") || msg.includes("travel") || msg.includes("europe") || msg.includes("trip") || msg.includes("what should i wear") || msg.includes("what should i rock") || msg.includes("outfit advice") || msg.includes("fashion advice") || msg.includes("style advice") || msg.includes("what to wear") || msg.includes("clothing") || msg.includes("dress") || msg.includes("look") || msg.includes("appearance") || msg.includes("grooming")) return "style_advice";
@@ -235,7 +235,8 @@ function stripClosers(text) {
     /\beffortlessly\s+(?:cool|stylish|confident)\b/gi,
     /\b(?:this look gives off|this says)\b/gi,
     /\b(?:casual yet put-together)\b/gi,
-    /\b(?:you'll look effortlessly)\b/gi
+    /\b(?:you'll look effortlessly)\b/gi,
+    /\bjuicy\b/gi
   ];
   
   bannedPhrases.forEach(pattern => {
@@ -312,20 +313,24 @@ exports.handleChat = async (req, res) => {
     // Get or create user and update gender preference if detected
     let user = null;
     
-    // Check if userId is a valid ObjectId
+    // Check if userId is a valid ObjectId before attempting database queries
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
       try {
         user = await User.findById(userId);
+        debugLog('DEBUG: Found user in database:', user ? 'yes' : 'no');
       } catch (err) {
-        debugLog('Database query failed, using default user:', err.message);
+        debugLog('DEBUG: Database query failed, using default user:', err.message);
         user = null;
       }
+    } else {
+      debugLog('DEBUG: Invalid userId format, using default user. userId:', userId);
     }
     
     if (!user) {
       // For anonymous users or invalid userIds, don't create a User record - just use a default gender preference
       // The User model requires an email, so we can't create anonymous users
       user = { preferences: { gender: 'male' } };
+      debugLog('DEBUG: Using default user with male gender preference');
     }
     
     // Update gender preference if detected in current message
@@ -351,30 +356,50 @@ exports.handleChat = async (req, res) => {
     let conversation = null;
     let isNewSession = false;
     
+    debugLog('DEBUG: Loading conversation history for userId:', userId);
+    debugLog('DEBUG: userId is valid ObjectId:', mongoose.Types.ObjectId.isValid(userId));
+    
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      conversation = await Conversation.findOne({ userId });
-      if (!conversation) {
-        conversation = new Conversation({ userId, messages: [] });
-        isNewSession = true;
-      } else {
-        // Check if this is a new session (no recent messages in last 30 minutes)
-        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-        const lastMessage = conversation.messages[conversation.messages.length - 1];
-        if (!lastMessage || lastMessage.timestamp < thirtyMinutesAgo) {
+      try {
+        conversation = await Conversation.findOne({ userId });
+        debugLog('DEBUG: Found conversation in database:', conversation ? 'yes' : 'no');
+        if (!conversation) {
+          conversation = new Conversation({ userId, messages: [] });
           isNewSession = true;
-          // Clear conversation for new session
-          conversation.messages = [];
+          debugLog('DEBUG: Created new conversation for valid userId');
+        } else {
+          // Check if this is a new session (no recent messages in last 30 minutes)
+          const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+          const lastMessage = conversation.messages[conversation.messages.length - 1];
+          if (!lastMessage || lastMessage.timestamp < thirtyMinutesAgo) {
+            isNewSession = true;
+            // Clear conversation for new session
+            conversation.messages = [];
+            debugLog('DEBUG: Cleared conversation for new session (30+ min gap)');
+          }
         }
+            // Load conversation history for context (empty if new session)
+    recentMessages = conversation.messages.slice(-10);
+        debugLog('DEBUG: Loaded recent messages from database:', recentMessages.length);
+      } catch (err) {
+        debugLog('DEBUG: Error loading conversation from database:', err.message);
+        // Fallback to session memory
+        const sessionHistory = getSessionHistory(userId);
+        if (sessionHistory.length === 0) {
+          isNewSession = true;
+        }
+        recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
+        debugLog('DEBUG: Using session memory fallback, messages:', recentMessages.length);
       }
-      // Load conversation history for context (empty if new session)
-      recentMessages = conversation.messages.slice(-10);
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
+      debugLog('DEBUG: Using session memory for invalid userId');
       const sessionHistory = getSessionHistory(userId);
       if (sessionHistory.length === 0) {
         isNewSession = true;
       }
       recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
+      debugLog('DEBUG: Session memory messages:', recentMessages.length);
     }
     
     debugLog('DEBUG: Is new session:', isNewSession);
@@ -433,7 +458,7 @@ exports.handleChat = async (req, res) => {
       }
     }
     
-    // Create context-aware message for intent classification
+    // Create context-aware message for routing, but use current message for intent classification
     const conversationContext = recentMessages.map(msg => msg.content).join(' ');
     const contextAwareMessage = `${conversationContext} ${message}`.trim();
     
@@ -443,8 +468,9 @@ exports.handleChat = async (req, res) => {
     debugLog('DEBUG: Available intent routing:', Object.keys(julesConfig.intent_routing || {}));
     debugLog('DEBUG: Conversation context length:', conversationContext.length);
     debugLog('DEBUG: Context-aware message:', contextAwareMessage.substring(0, 200) + '...');
+    debugLog('DEBUG: Current message for intent classification:', message);
     const routedMode = routeIntent(contextAwareMessage);
-    const intent = classifyIntent(contextAwareMessage);
+    const intent = classifyIntent(message); // Use current message, not context-aware message
     debugLog('DEBUG: Intent classification result:', intent);
     debugLog('DEBUG: Routed mode result:', routedMode);
     debugLog('DEBUG: Message being routed:', message);
@@ -506,16 +532,41 @@ exports.handleChat = async (req, res) => {
     }
     
     // === Assemble messages for OpenAI ===
-    // Add current message to conversation history
+    // Add current message to conversation history (avoid duplicates)
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      recentMessages.push({ role: 'user', content: message });
+      // Only add to recentMessages if not already there
+      const lastMessage = recentMessages[recentMessages.length - 1];
+      if (!lastMessage || lastMessage.content !== message || lastMessage.role !== 'user') {
+        recentMessages.push({ role: 'user', content: message });
+      }
+      
       // Add current message to conversation for persistence
-      conversation.messages.push({ role: 'user', content: message });
-      // Save the conversation to persist the new message
-      await conversation.save();
+      if (conversation) {
+        // Check if this message is already the last message in conversation
+        const lastConvMessage = conversation.messages[conversation.messages.length - 1];
+        if (!lastConvMessage || lastConvMessage.content !== message || lastConvMessage.role !== 'user') {
+          conversation.messages.push({ role: 'user', content: message });
+          // Save the conversation to persist the new message
+          try {
+            await conversation.save();
+            debugLog('DEBUG: Saved user message to database conversation');
+          } catch (err) {
+            debugLog('DEBUG: Error saving conversation to database:', err.message);
+          }
+        } else {
+          debugLog('DEBUG: User message already exists in conversation, skipping save');
+        }
+      }
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
-      recentMessages.push({ role: 'user', content: message });
+      const sessionHistory = getSessionHistory(userId);
+      const lastSessionMessage = sessionHistory[sessionHistory.length - 1];
+      if (!lastSessionMessage || lastSessionMessage.content !== message || lastSessionMessage.role !== 'user') {
+        recentMessages.push({ role: 'user', content: message });
+        debugLog('DEBUG: Added user message to session memory');
+      } else {
+        debugLog('DEBUG: User message already exists in session memory, skipping add');
+      }
     }
     
     // Ensure all messages are proper objects and add current message
@@ -599,13 +650,13 @@ exports.handleChat = async (req, res) => {
       products = [];
     }
 
-    // Add assistant's response to session memory and conversation history
-    addSessionMessage(userId, { role: "assistant", content: reply });
-    
-    // Save assistant's response to MongoDB conversation if using valid userId
-    if (mongoose.Types.ObjectId.isValid(userId) && conversation) {
-      conversation.messages.push({ role: 'assistant', content: reply });
-      await conversation.save();
+    // Add assistant's response to session memory (avoid duplicates)
+    const lastSessionMessage = getSessionHistory(userId).slice(-1)[0];
+    if (!lastSessionMessage || lastSessionMessage.content !== reply) {
+      addSessionMessage(userId, { role: "assistant", content: reply });
+      debugLog('DEBUG: Added assistant response to session memory');
+    } else {
+      debugLog('DEBUG: Assistant response already exists in session memory, skipping add');
     }
     
     // Update user memory based on intent with enhanced extraction
@@ -704,17 +755,6 @@ exports.handleChat = async (req, res) => {
     if (intent === "product_request" && showProductCards) {
       debugLog('DEBUG: Product request detected, routing to products route...');
       
-      // Save conversation FIRST so Jules's brand recommendations are available for extraction
-      if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
-        conversation.messages.push({ role: 'assistant', content: finalReply });
-        try {
-          await conversation.save();
-          debugLog('DEBUG: Conversation saved before products route call');
-        } catch (saveError) {
-          console.error('DEBUG: Error saving conversation:', saveError);
-        }
-      }
-      
       try {
         const productsResponse = await axios.post(`${req.protocol}://${req.get('host')}/api/products`, {
           message,
@@ -745,14 +785,14 @@ exports.handleChat = async (req, res) => {
     debugLog('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
     debugLog('DEBUG: Backend sending response to frontend');
     
-    // Only try to save conversation if it exists (valid userId)
+    // Save conversation to database (only once)
     if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
       conversation.messages.push({ role: 'assistant', content: finalReply });
       try {
         await conversation.save();
         debugLog('DEBUG: Conversation saved successfully');
       } catch (saveError) {
-        console.error('DEBUG: Error saving conversation:', saveError);
+        debugLog('DEBUG: Error saving conversation:', saveError.message);
         // Don't fail the request if save fails
       }
     }
