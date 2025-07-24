@@ -1,7 +1,5 @@
 // Only load dotenv in development (not production)
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+require('dotenv').config();
 const { OpenAI } = require('openai');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');

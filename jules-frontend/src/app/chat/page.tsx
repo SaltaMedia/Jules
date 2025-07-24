@@ -60,14 +60,8 @@ export default function Chat() {
   // Initialize messages after component mounts to avoid hydration issues
   useEffect(() => {
     if (!isInitialized) {
-      setMessages([
-        {
-          id: "1",
-          text: "Hi! Good to meet you. Before we get started, tell me about yourself.",
-          sender: "jules",
-          timestamp: new Date(),
-        },
-      ]);
+      // Start with empty messages - let the backend handle the welcome message
+      setMessages([]);
       setIsInitialized(true);
     }
   }, [isInitialized]);

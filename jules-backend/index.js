@@ -1,12 +1,12 @@
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
+  console.error('Stack:', err.stack);
+  process.exit(1);
 });
 console.log('Starting server...');
-// Only load dotenv in development (not production)
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-  console.log('dotenv loaded');
-}
+// Always load dotenv (works in both dev and production)
+require('dotenv').config();
+console.log('dotenv loaded');
 
 const express = require('express');
 console.log('express loaded');
@@ -36,7 +36,7 @@ app.use(express.json());
 // Configure CORS for production
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-rosy.vercel.app']
+    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-rosy.vercel.app', 'https://jules-production-2221.up.railway.app']
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   optionsSuccessStatus: 200
@@ -45,10 +45,21 @@ app.use(cors(corsOptions));
 app.use('/api', router);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Only apply session middleware to routes that need authentication
-app.use('/api/auth', session({ secret: 'jules_secret', resave: false, saveUninitialized: false }));
-app.use('/api/auth', passport.initialize());
-app.use('/api/auth', passport.session());
+// Configure MongoDB session store
+const MongoStore = require('connect-mongo');
+
+// Apply session middleware to all API routes that need session persistence
+app.use('/api', session({ 
+  secret: 'jules_secret', 
+  resave: false, 
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    collectionName: 'sessions'
+  })
+}));
+app.use('/api', passport.initialize());
+app.use('/api', passport.session());
 
 // Google OAuth routes (only if configured)
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -89,6 +100,16 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 
 app.get('/test', (req, res) => res.send('Express is working!'));
 
+// Root endpoint for Railway health checks
+app.get('/', (req, res) => {
+  console.log('Health check requested at:', new Date().toISOString());
+  res.json({ 
+    status: 'ok', 
+    message: 'Jules Backend API',
+    timestamp: new Date().toISOString() 
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -114,19 +135,23 @@ console.log('MONGODB_URI:', process.env.MONGODB_URI);
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
+  console.error('Stack:', reason.stack);
+  process.exit(1);
 });
 
-// Connect to MongoDB Atlas
-console.log('Calling mongoose.connect...');
-mongoose.connect(process.env.MONGODB_URI)
-.then(() => {
-  console.log('Connected to MongoDB Atlas');
-  console.log('About to start server...');
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Start server first, then connect to MongoDB
+console.log('Starting server first...');
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  
+  // Now connect to MongoDB
+  console.log('Calling mongoose.connect...');
+  mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Connected to MongoDB Atlas');
+  })
+  .catch((err) => {
+    console.error('Failed to connect to MongoDB Atlas:', err);
+    // Don't exit - server can still run without DB for health checks
   });
-})
-.catch((err) => {
-  console.error('Failed to connect to MongoDB Atlas:', err);
-  process.exit(1);
 });
