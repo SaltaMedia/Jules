@@ -497,30 +497,26 @@ exports.handleChat = async (req, res) => {
     }
     
     // === Assemble messages for OpenAI ===
-    // Add current message to conversation history
+    // Add current message to conversation history (ONLY ONCE)
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      recentMessages.push({ role: 'user', content: message });
       // Add current message to conversation for persistence
       conversation.messages.push({ role: 'user', content: message });
       // Save the conversation to persist the new message
       await conversation.save();
+      // Load conversation history for context (including the message we just added)
+      recentMessages = conversation.messages.slice(-10);
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
       recentMessages.push({ role: 'user', content: message });
     }
     
-    // Ensure all messages are proper objects and add current message
+    // Ensure all messages are proper objects
     recentMessages = recentMessages.map(msg => {
       if (typeof msg === 'string') {
         return { role: 'user', content: msg };
       }
       return msg;
     });
-    
-    // Add current message (only if not already added for valid userIds)
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      recentMessages.push({ role: 'user', content: message });
-    }
     
     // === USER PROFILE CHECK ===
     const hasUserProfile = user && user._id && (user.name || user.email);
@@ -695,17 +691,6 @@ exports.handleChat = async (req, res) => {
     if (intent === "product_request" && showProductCards) {
       debugLog('DEBUG: Product request detected, routing to products route...');
       
-      // Save conversation FIRST so Jules's brand recommendations are available for extraction
-      if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
-        conversation.messages.push({ role: 'assistant', content: finalReply });
-        try {
-          await conversation.save();
-          debugLog('DEBUG: Conversation saved before products route call');
-        } catch (saveError) {
-          console.error('DEBUG: Error saving conversation:', saveError);
-        }
-      }
-      
       try {
         const productsResponse = await axios.post(`${req.protocol}://${req.get('host')}/api/products`, {
           message,
@@ -736,7 +721,7 @@ exports.handleChat = async (req, res) => {
     debugLog('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
     debugLog('DEBUG: Backend sending response to frontend');
     
-    // Only try to save conversation if it exists (valid userId)
+    // Save conversation with assistant's response (ONLY ONCE)
     if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
       conversation.messages.push({ role: 'assistant', content: finalReply });
       try {
