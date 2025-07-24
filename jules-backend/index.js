@@ -1,5 +1,7 @@
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
+  console.error('Stack:', err.stack);
+  process.exit(1);
 });
 console.log('Starting server...');
 // Always load dotenv (works in both dev and production)
@@ -122,6 +124,8 @@ console.log('MONGODB_URI:', process.env.MONGODB_URI);
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
+  console.error('Stack:', reason.stack);
+  process.exit(1);
 });
 
 // Start server first, then connect to MongoDB
