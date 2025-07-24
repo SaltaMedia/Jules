@@ -2,11 +2,9 @@
 require('dotenv').config();
 const { OpenAI } = require('openai');
 
-// Debug logging helper - only log in development
+// Debug logging helper - enable in production for troubleshooting
 const debugLog = (...args) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(...args);
-  }
+  console.log(...args);
 };
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
