@@ -170,7 +170,8 @@ function extractProducts(input) {
   const generalTerms = ["clothing", "outfit", "dress", "wear", "fashion"];
   const foundTerms = generalTerms.filter(term => inputLower.includes(term));
   
-  const result = foundTerms.length > 0 ? foundTerms.join(", ") : "clothing interest";
+  // Only return product-related terms if we actually found something specific
+  const result = foundTerms.length > 0 ? foundTerms.join(", ") : null;
   debugLog('DEBUG: extractProducts returning:', result);
   return result;
 }
@@ -294,8 +295,10 @@ exports.handleChat = async (req, res) => {
       const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
       
       if (isLocalhost) {
-        userId = 'test_user';
-        console.warn("⚠️ Using test_user for local development. No persistent memory.");
+        // Create a consistent MongoDB ObjectId for test user to enable MongoDB session testing
+        const mongoose = require('mongoose');
+        userId = new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'); // Consistent test user ID
+        console.warn("⚠️ Using test_user ObjectId for local development. MongoDB session testing enabled.");
       } else {
         return res.status(401).json({ error: "User not authenticated" });
       }
@@ -376,6 +379,59 @@ exports.handleChat = async (req, res) => {
     
     debugLog('DEBUG: Is new session:', isNewSession);
     debugLog('DEBUG: Recent messages count:', recentMessages.length);
+    
+    // === VAGUE CHAT ESCALATION SYSTEM ===
+    const userMemory = getUserMemory(userId);
+    if (!userMemory.vagueChatCount) userMemory.vagueChatCount = 0;
+
+    // Only trigger vague chat detection on truly standalone vague messages
+    // Messages with substantive content should not trigger vague chat escalation
+    const isVague = (message.toLowerCase().trim() === "hey" || 
+                     message.toLowerCase().trim() === "hi" || 
+                     message.toLowerCase().trim() === "hello" || 
+                     message.toLowerCase().trim() === "hello?" || 
+                     message.toLowerCase().trim() === "wyd" || 
+                     message.toLowerCase().trim() === "you there" || 
+                     message.toLowerCase().trim() === "you there?" || 
+                     message.toLowerCase().trim() === "?" || 
+                     message.toLowerCase().trim() === "lol" || 
+                     message.toLowerCase().trim() === "idk" || 
+                     message.toLowerCase().trim() === "nothing really" || 
+                     message.toLowerCase().trim() === "just chatting") && 
+                     !/(ghost|ghosted|date|text|sent|already|thinking|advice|help|style|outfit|suit|shoes|jacket|shirt|pants|jeans|sneakers|boots|loafers|dating|relationship|breakup|feel|hurt|confused|frustrated|angry|sad|upset|anxious|nervous|worried|stressed|overthink|doubt|trust|love|like|crush|feelings|emotion|party|wedding|coffee|shop|tomorrow|weekend|today|yesterday|morning|night|evening|afternoon|time|schedule|plan|prepare|practice|rehearse|research|study|learn|understand|know|familiar|experience|background|history|story|situation|circumstance|context|details|information|facts|data|statistics|numbers|percentages|rates|scores|grades|results|outcomes|effects|impacts|consequences|benefits|advantages|disadvantages|pros|cons|positives|negatives|good|bad|better|worse|best|worst|improve|enhance|boost|increase|decrease|reduce|minimize|maximize|optimize|perfect|ideal|optimal|suitable|appropriate|relevant|related|connected|linked|associated|correlated|similar|different|unique|special|particular|specific|general|broad|narrow|wide|limited|extended|expanded|detailed|comprehensive|thorough|complete|partial|incomplete|finished|unfinished|done|undone|ready|unready|prepared|unprepared|organized|disorganized|structured|unstructured|planned|unplanned|scheduled|unscheduled|timed|untimed|measured|unmeasured|quantified|unquantified|assessed|unassessed|evaluated|unevaluated|reviewed|unreviewed|examined|unexamined|analyzed|unanalyzed|studied|unstudied|researched|unresearched|investigated|uninvestigated|explored|unexplored|discovered|undiscovered|found|unfound|identified|unidentified|recognized|unrecognized|noticed|unnoticed|observed|unobserved|seen|unseen|viewed|unviewed|watched|unwatched|monitored|unmonitored|tracked|untracked|followed|unfollowed|pursued|unpursued|chased|unchased|hunted|unhunted|sought|unsought|looked|unlooked|searched|unsearched|explored|unexplored|investigated|uninvestigated|examined|unexamined|studied|unstudied|researched|unresearched|analyzed|unanalyzed|reviewed|unreviewed|assessed|unassessed|evaluated|unevaluated|measured|unmeasured|quantified|unquantified|timed|untimed|scheduled|unscheduled|planned|unplanned|organized|disorganized|structured|unstructured|prepared|unprepared|ready|unready|done|undone|finished|unfinished|complete|incomplete|thorough|unthorough|comprehensive|uncomprehensive|detailed|undetailed|extended|unextended|expanded|unexpanded|broad|narrow|wide|limited|general|specific|particular|special|unique|different|similar|correlated|associated|linked|connected|related|relevant|appropriate|suitable|optimal|ideal|perfect|maximize|minimize|reduce|increase|boost|enhance|improve|worst|best|worse|better|bad|good|negatives|positives|cons|pros|disadvantages|advantages|benefits|consequences|impacts|effects|outcomes|results|grades|scores|rates|percentages|numbers|data|facts|information|details|context|circumstance|situation|story|history|background|experience|familiar|know|understand|learn|study|research|practice|rehearse|prepare|plan|schedule|time|year|month|week|yesterday|today|tomorrow|ready|prepared|confident|anxious|stressed|worried|nervous|excited|happy|sad|emotions|feelings|thoughts|perspective|view|opinion|what\s*do\s*you\s*think|discuss|talk\s*about|describe|explain|tell|ask|question|support|assistance|guidance|help|advice|tips|position|role|company|job|interview)/i.test(message);
+
+    if (isVague) {
+      userMemory.vagueChatCount += 1;
+      debugLog('DEBUG: VAGUE CHAT DETECTED - count:', userMemory.vagueChatCount);
+
+      const vagueCount = userMemory.vagueChatCount;
+
+      // Only trigger escalating response after 2+ vague messages
+      if (vagueCount >= 2) {
+        debugLog('DEBUG: Triggering escalating response - count:', vagueCount);
+        
+        let vagueResponse;
+        if (vagueCount <= 2) {
+          vagueResponse = "Yup, I'm here. What's up?\n\nYou bored, avoiding something, or actually want to talk about something? Dating, style, whatever. Just spit it out.";
+        } else {
+          vagueResponse = "Still doing the vague thing? Come on. What's actually on your mind? You bored? Avoiding work? Or do you actually want advice on something? Let's cut the bullshit.";
+        }
+
+        // Save the static message to conversation and return it
+        if (mongoose.Types.ObjectId.isValid(userId)) {
+          conversation.messages.push({ role: 'user', content: message });
+          conversation.messages.push({ role: 'assistant', content: vagueResponse });
+          await conversation.save();
+        }
+        return res.json({ reply: vagueResponse, products: [] });
+      }
+    } else {
+      // Reset vague chat count if user sends a substantive message
+      if (userMemory.vagueChatCount > 0) {
+        userMemory.vagueChatCount = 0;
+        debugLog('DEBUG: Reset vague chat count to 0');
+      }
+    }
     
     // Create context-aware message for intent classification
     const conversationContext = recentMessages.map(msg => msg.content).join(' ');
