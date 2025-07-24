@@ -48,8 +48,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Configure MongoDB session store
 const MongoStore = require('connect-mongo');
 
-// Only apply session middleware to routes that need authentication
-app.use('/api/auth', session({ 
+// Apply session middleware to all API routes that need session persistence
+app.use('/api', session({ 
   secret: 'jules_secret', 
   resave: false, 
   saveUninitialized: false,
@@ -58,8 +58,8 @@ app.use('/api/auth', session({
     collectionName: 'sessions'
   })
 }));
-app.use('/api/auth', passport.initialize());
-app.use('/api/auth', passport.session());
+app.use('/api', passport.initialize());
+app.use('/api', passport.session());
 
 // Google OAuth routes (only if configured)
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
