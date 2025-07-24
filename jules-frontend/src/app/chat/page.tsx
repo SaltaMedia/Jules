@@ -118,8 +118,11 @@ export default function Chat() {
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
 
+    // Generate a unique message ID using timestamp + random number to prevent conflicts
+    const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: messageId,
       text: inputText,
       sender: "user",
       timestamp: new Date(),
@@ -135,33 +138,47 @@ export default function Chat() {
     try {
       // Send message to backend and let it handle all product detection
       const data = await chat.sendMessage(messageText, userId);
+      
+      // Generate sequential IDs for Jules's response messages
       const julesTextMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `${messageId}-jules-text`,
         text: data.reply || data.response || "I'm having trouble responding right now. Try again!",
         sender: "jules",
         timestamp: new Date(),
         type: "text"
       };
+      
       const newMessages: Message[] = [julesTextMessage];
+      
       if (data.images && data.images.length > 0) {
         newMessages.push({
-          id: (Date.now() + 2).toString(),
+          id: `${messageId}-jules-images`,
           sender: "jules",
           timestamp: new Date(),
           type: "images",
           images: data.images
         });
       }
+      
       if (data.products && data.products.length > 0) {
         newMessages.push({
-          id: (Date.now() + 3).toString(),
+          id: `${messageId}-jules-products`,
           sender: "jules",
           timestamp: new Date(),
           type: "products",
           products: data.products
         });
       }
-      setMessages((prev) => [...prev, ...newMessages]);
+      
+      // Use functional update to ensure we're working with the latest state
+      setMessages((prev) => {
+        // Ensure we don't add duplicate messages
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage && lastMessage.id === messageId) {
+          return [...prev, ...newMessages];
+        }
+        return prev;
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       let errorText = "Sorry, I'm having trouble connecting right now. Please try again!";
@@ -177,7 +194,7 @@ export default function Chat() {
       }
       
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `${messageId}-error`,
         text: errorText,
         sender: "jules",
         timestamp: new Date(),

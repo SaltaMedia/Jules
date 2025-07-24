@@ -540,23 +540,8 @@ exports.handleChat = async (req, res) => {
         recentMessages.push({ role: 'user', content: message });
       }
       
-      // Add current message to conversation for persistence
-      if (conversation) {
-        // Check if this message is already the last message in conversation
-        const lastConvMessage = conversation.messages[conversation.messages.length - 1];
-        if (!lastConvMessage || lastConvMessage.content !== message || lastConvMessage.role !== 'user') {
-          conversation.messages.push({ role: 'user', content: message });
-          // Save the conversation to persist the new message
-          try {
-            await conversation.save();
-            debugLog('DEBUG: Saved user message to database conversation');
-          } catch (err) {
-            debugLog('DEBUG: Error saving conversation to database:', err.message);
-          }
-        } else {
-          debugLog('DEBUG: User message already exists in conversation, skipping save');
-        }
-      }
+      // DON'T save user message to database yet - wait until we have the AI response
+      // This prevents race conditions in production
     } else {
       // For invalid userIds (like test_user), use session memory to track conversation
       const sessionHistory = getSessionHistory(userId);
@@ -787,10 +772,12 @@ exports.handleChat = async (req, res) => {
     
     // Save conversation to database (only once)
     if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
+      // Save both user message and assistant response together to ensure proper ordering
+      conversation.messages.push({ role: 'user', content: message });
       conversation.messages.push({ role: 'assistant', content: finalReply });
       try {
         await conversation.save();
-        debugLog('DEBUG: Conversation saved successfully');
+        debugLog('DEBUG: Conversation saved successfully with both messages');
       } catch (saveError) {
         debugLog('DEBUG: Error saving conversation:', saveError.message);
         // Don't fail the request if save fails
