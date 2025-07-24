@@ -87,6 +87,16 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 
 app.get('/test', (req, res) => res.send('Express is working!'));
 
+// Root endpoint for Railway health checks
+app.get('/', (req, res) => {
+  console.log('Health check requested at:', new Date().toISOString());
+  res.json({ 
+    status: 'ok', 
+    message: 'Jules Backend API',
+    timestamp: new Date().toISOString() 
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
