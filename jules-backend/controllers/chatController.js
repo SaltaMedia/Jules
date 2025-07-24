@@ -474,6 +474,8 @@ exports.handleChat = async (req, res) => {
     debugLog(`DEBUG: Mode config:`, modeConfig);
     debugLog(`DEBUG: Jules config loaded:`, !!julesConfig.intent_routing);
     let showProductCards = (intent === "product_request");
+    debugLog('DEBUG: Intent classification result:', intent);
+    debugLog('DEBUG: showProductCards initial value:', showProductCards);
     
     // === MEMORY CONTEXT (light only) ===
     const convoHistory = getSessionHistory(userId);
@@ -712,8 +714,7 @@ exports.handleChat = async (req, res) => {
           debugLog('DEBUG: Products found via route:', productsResponse.data.products.length);
           // Replace the products array with the intelligent results from the products route
           products = [...productsResponse.data.products]; // Create new array with products from route
-          // Only show product cards if the original intent was a product request
-          showProductCards = (intent === "product_request");
+          showProductCards = true;
         } else {
           debugLog('DEBUG: No products found via route');
         }
