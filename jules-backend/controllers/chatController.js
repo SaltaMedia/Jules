@@ -712,7 +712,8 @@ exports.handleChat = async (req, res) => {
           debugLog('DEBUG: Products found via route:', productsResponse.data.products.length);
           // Replace the products array with the intelligent results from the products route
           products = [...productsResponse.data.products]; // Create new array with products from route
-          showProductCards = true;
+          // Only show product cards if the original intent was a product request
+          showProductCards = (intent === "product_request");
         } else {
           debugLog('DEBUG: No products found via route');
         }
