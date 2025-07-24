@@ -417,8 +417,10 @@ exports.handleChat = async (req, res) => {
       if (!conversation) {
         conversation = new Conversation({ userId, messages: [] });
       }
-      // Load conversation history BEFORE adding the new message
+      // Load conversation history and add current message
       recentMessages = conversation.messages.slice(-10);
+      recentMessages.push({ role: 'user', content: message });
+      // Add current message to conversation for persistence
       conversation.messages.push({ role: 'user', content: message });
       // Save the conversation to persist the new message
       await conversation.save();
