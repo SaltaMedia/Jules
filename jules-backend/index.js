@@ -8,6 +8,12 @@ console.log('Starting server...');
 require('dotenv').config();
 console.log('dotenv loaded');
 
+// === FORCE RESTART TEST ===
+console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
+console.log('🚨🚨🚨 Server started at:', new Date().toISOString());
+console.log('🚨🚨🚨 Git commit: 22c5b7e - FORCE DEPLOYMENT TEST');
+console.log('🚨🚨🚨 === FORCE RESTART TEST END ===');
+
 const express = require('express');
 console.log('express loaded');
 const mongoose = require('mongoose');
