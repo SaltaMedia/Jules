@@ -6,7 +6,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "echo '🚨🚨🚨 BUILD TEST - This should appear during build process 🚨🚨🚨' && echo '🚨🚨🚨 Build timestamp:' $(date) && echo '🚨🚨🚨 === BUILD TEST END ==='"
+    "build": "echo '🚨🚨🚨 CLEAN BUILD VERSION 3.1.7 - FORCING COMPLETE REBUILD 🚨🚨🚨' && echo '🚨🚨🚨 Build timestamp:' $(date) && echo '🚨🚨🚨 Git commit:' $(git rev-parse --short HEAD) && echo '🚨🚨🚨 === CLEAN BUILD END ===' && npm ci --only=production",
+    "clean-build": "rm -rf node_modules package-lock.json && npm install && npm run build"
   },
   "keywords": [],
   "author": "",

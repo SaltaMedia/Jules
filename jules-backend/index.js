@@ -2,6 +2,10 @@
 // 🚨🚨🚨 This message should force Render to rebuild the entire container 🚨🚨🚨
 // 🚨🚨🚨 Timestamp: 2025-07-25 22:47:00 UTC 🚨🚨🚨
 // 🚨🚨🚨 Git commit: 108539d - CRITICAL FIX: Force isNewSession = true 🚨🚨🚨
+// 🚨🚨🚨 BUILD VERSION: 3.1.7 - CLEAN BUILD FORCE 🚨🚨🚨
+
+console.log("🚨🚨🚨 RUNNING BUILD VERSION: 3.1.7 - CLEAN BUILD FORCE 🚨🚨🚨");
+console.log("🚨🚨🚨 If you see this, the clean build worked! 🚨🚨🚨");
 
 require('dotenv').config();
 
