@@ -1,3 +1,10 @@
+// 🚨🚨🚨 FORCE COMPLETE REBUILD - Render is not deploying latest code 🚨🚨🚨
+// 🚨🚨🚨 This message should force Render to rebuild the entire container 🚨🚨🚨
+// 🚨🚨🚨 Timestamp: 2025-07-25 22:47:00 UTC 🚨🚨🚨
+// 🚨🚨🚨 Git commit: 108539d - CRITICAL FIX: Force isNewSession = true 🚨🚨🚨
+
+require('dotenv').config();
+
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
   console.error('Stack:', err.stack);
@@ -5,8 +12,6 @@ process.on('uncaughtException', (err) => {
 });
 console.log('Starting server...');
 // Always load dotenv (works in both dev and production)
-require('dotenv').config();
-console.log('dotenv loaded');
 
 // === FORCE RESTART TEST ===
 console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
