@@ -4,9 +4,19 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 console.log('Starting server...');
-// Always load dotenv to ensure environment variables are available
-require('dotenv').config();
-console.log('dotenv loaded');
+// Force NODE_ENV to production if not set (Railway should set this)
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'production';
+  console.log('DEBUG: Set NODE_ENV to production');
+}
+
+// Load dotenv only in development (Railway provides env vars directly in production)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+  console.log('dotenv loaded (development)');
+} else {
+  console.log('Using Railway environment variables (production)');
+}
 console.log('DEBUG: NODE_ENV is:', process.env.NODE_ENV);
 console.log('DEBUG: Environment variables loaded:', Object.keys(process.env).filter(key => key.includes('MONGODB') || key.includes('OPENAI') || key.includes('JWT')).length);
 
