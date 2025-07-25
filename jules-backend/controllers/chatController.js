@@ -1,5 +1,7 @@
-// Always load dotenv (works in both dev and production)
-require('dotenv').config();
+// Load dotenv only in development (Railway provides env vars in production)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const { OpenAI } = require('openai');
 
 // Debug logging helper - enable in production for troubleshooting
@@ -12,7 +14,17 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary, addSessionMessage, getSessionHistory } = require('../utils/userMemoryStore');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize OpenAI client lazily to avoid startup issues
+let openai = null;
+function getOpenAI() {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is required');
+    }
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 // === MESSAGE QUEUE SYSTEM ===
 // Global message queues per user to ensure sequential processing
@@ -802,7 +814,7 @@ async function handleChatInternal(message, req, res) {
     debugLog("Mode:", routedMode);
     debugLog("System prompt:", systemPrompt);
     
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages,
       max_tokens: maxTokens,
@@ -1023,7 +1035,7 @@ exports.productSearch = async (req, res) => {
   const cseId = process.env.GOOGLE_CSE_ID;
   let searchQuery = query;
   try {
-    const llmResult = await openai.chat.completions.create({
+    const llmResult = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },

@@ -2,7 +2,10 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
+// Get JWT secret lazily to avoid startup issues
+function getJWTSecret() {
+  return process.env.JWT_SECRET || 'supersecretkey';
+}
 
 exports.register = async (req, res) => {
   const { email, password } = req.body;

@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
+// Get JWT secret lazily to avoid startup issues
+function getJWTSecret() {
+  return process.env.JWT_SECRET || 'supersecretkey';
+}
 
 module.exports = (req, res, next) => {
   const host = req.headers.host || '';
@@ -17,7 +20,7 @@ module.exports = (req, res, next) => {
     return res.status(401).json({ error: 'No token provided.' });
   }
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJWTSecret());
     req.user = decoded;
     next();
   } catch (err) {
