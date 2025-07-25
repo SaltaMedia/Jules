@@ -36,7 +36,7 @@ app.use(express.json());
 // Configure CORS for production
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-rosy.vercel.app', 'https://jules-production-2221.up.railway.app']
+    ? ['https://www.juleslabs.com', 'https://juleslabs.com', 'https://jules-rosy.vercel.app']
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   optionsSuccessStatus: 200
@@ -48,9 +48,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Configure MongoDB session store
 const MongoStore = require('connect-mongo');
 
-// Debug environment variables
-console.log('DEBUG: MONGODB_URI available:', !!process.env.MONGODB_URI);
-console.log('DEBUG: MONGODB_URI value:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+
 
 // Apply session middleware to all API routes that need session persistence
 app.use('/api', session({ 
