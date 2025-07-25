@@ -378,9 +378,39 @@ exports.handleChat = async (req, res) => {
             debugLog('DEBUG: Cleared conversation for new session (30+ min gap)');
           }
         }
-            // Load conversation history for context (empty if new session)
-    recentMessages = conversation.messages.slice(-10);
+        // Load conversation history for context (empty if new session)
+        recentMessages = conversation.messages.slice(-10);
         debugLog('DEBUG: Loaded recent messages from database:', recentMessages.length);
+        
+        // === ENHANCED DEBUGGING: Session vs Database Comparison ===
+        const sessionHistory = getSessionHistory(userId);
+        debugLog('DEBUG: === SESSION VS DATABASE COMPARISON ===');
+        debugLog('DEBUG: Database messages count:', recentMessages.length);
+        debugLog('DEBUG: Session messages count:', sessionHistory.length);
+        debugLog('DEBUG: Database last message:', recentMessages[recentMessages.length - 1] ? {
+          role: recentMessages[recentMessages.length - 1].role,
+          content: recentMessages[recentMessages.length - 1].content.substring(0, 50) + '...',
+          timestamp: recentMessages[recentMessages.length - 1].timestamp
+        } : 'none');
+        debugLog('DEBUG: Session last message:', sessionHistory[sessionHistory.length - 1] ? {
+          role: sessionHistory[sessionHistory.length - 1].role,
+          content: sessionHistory[sessionHistory.length - 1].content.substring(0, 50) + '...',
+          timestamp: sessionHistory[sessionHistory.length - 1].timestamp
+        } : 'none');
+        
+        // Check for inconsistencies
+        if (recentMessages.length !== sessionHistory.length) {
+          debugLog('DEBUG: ⚠️ INCONSISTENCY DETECTED: Database and session have different message counts');
+        }
+        if (recentMessages.length > 0 && sessionHistory.length > 0) {
+          const dbLast = recentMessages[recentMessages.length - 1];
+          const sessionLast = sessionHistory[sessionHistory.length - 1];
+          if (dbLast.content !== sessionLast.content) {
+            debugLog('DEBUG: ⚠️ INCONSISTENCY DETECTED: Database and session have different last messages');
+          }
+        }
+        debugLog('DEBUG: === END SESSION VS DATABASE COMPARISON ===');
+        
       } catch (err) {
         debugLog('DEBUG: Error loading conversation from database:', err.message);
         // Fallback to session memory
@@ -808,6 +838,12 @@ exports.handleChat = async (req, res) => {
       try {
         await conversation.save();
         debugLog('DEBUG: Conversation saved successfully with both messages and timestamps');
+        debugLog('DEBUG: Database now has', conversation.messages.length, 'total messages');
+        
+        // Verify the save worked by checking the database again
+        const verifyConversation = await Conversation.findOne({ userId });
+        debugLog('DEBUG: Verification - Database conversation has', verifyConversation?.messages?.length || 0, 'messages');
+        
       } catch (saveError) {
         debugLog('DEBUG: Error saving conversation:', saveError.message);
         // Don't fail the request if save fails

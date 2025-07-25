@@ -124,6 +124,14 @@ function addSessionMessage(userId, message) {
   if (memory.recentMessages.length > 10) {
     memory.recentMessages.shift();
   }
+  
+  console.log('DEBUG: Session memory updated for userId:', userId);
+  console.log('DEBUG: Session now has', memory.recentMessages.length, 'messages');
+  console.log('DEBUG: Latest session message:', {
+    role: messageWithTimestamp.role,
+    content: messageWithTimestamp.content.substring(0, 50) + '...',
+    timestamp: messageWithTimestamp.timestamp
+  });
 }
 
 function getSessionHistory(userId) {
