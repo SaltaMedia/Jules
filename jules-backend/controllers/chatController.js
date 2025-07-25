@@ -562,16 +562,28 @@ async function handleChatInternal(message, req, res) {
           timestamp: sessionHistory[sessionHistory.length - 1].timestamp
         } : 'none');
         
-        // Check for inconsistencies
+        // Check for inconsistencies and force clear session memory if any detected
+        let forceClearSession = false;
         if (recentMessages.length !== sessionHistory.length) {
           debugLog('DEBUG: ⚠️ INCONSISTENCY DETECTED: Database and session have different message counts');
+          forceClearSession = true;
         }
         if (recentMessages.length > 0 && sessionHistory.length > 0) {
           const dbLast = recentMessages[recentMessages.length - 1];
           const sessionLast = sessionHistory[sessionHistory.length - 1];
           if (dbLast.content !== sessionLast.content) {
             debugLog('DEBUG: ⚠️ INCONSISTENCY DETECTED: Database and session have different last messages');
+            forceClearSession = true;
           }
+        }
+        
+        // Force clear session memory if inconsistencies detected
+        if (forceClearSession) {
+          clearSessionMemory(userId);
+          debugLog('DEBUG: FORCE CLEARED session memory due to inconsistencies');
+          // Re-get session history after clearing
+          const freshSessionHistory = getSessionHistory(userId);
+          debugLog('DEBUG: Fresh session history length after force clear:', freshSessionHistory.length);
         }
         debugLog('DEBUG: === END SESSION VS DATABASE COMPARISON ===');
         
