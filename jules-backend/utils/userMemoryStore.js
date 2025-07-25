@@ -143,6 +143,12 @@ function getSessionHistory(userId) {
   return sessionHistory;
 }
 
+function clearSessionMemory(userId) {
+  const memory = getUserMemory(userId);
+  memory.recentMessages = [];
+  console.log('DEBUG: Cleared session memory for userId:', userId);
+}
+
 module.exports = {
   getUserMemory,
   updateUserMemory,
@@ -152,4 +158,5 @@ module.exports = {
   getRecentMemorySummary,
   addSessionMessage,
   getSessionHistory,
+  clearSessionMemory,
 }; 

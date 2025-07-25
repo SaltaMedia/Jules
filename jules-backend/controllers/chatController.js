@@ -12,7 +12,7 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const axios = require('axios');
 const mongoose = require('mongoose');
-const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary, addSessionMessage, getSessionHistory } = require('../utils/userMemoryStore');
+const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary, addSessionMessage, getSessionHistory, clearSessionMemory } = require('../utils/userMemoryStore');
 
 // Initialize OpenAI client lazily to avoid startup issues
 let openai = null;
@@ -514,6 +514,12 @@ async function handleChatInternal(message, req, res) {
             debugLog('DEBUG: Cleared conversation for new session (30+ min gap)');
           }
         }
+        
+        // Clear session memory if this is a new session
+        if (isNewSession) {
+          clearSessionMemory(userId);
+          debugLog('DEBUG: Cleared session memory for new session');
+        }
         // Load conversation history for context (empty if new session)
         if (isNewSession) {
           recentMessages = [];
@@ -569,6 +575,13 @@ async function handleChatInternal(message, req, res) {
       if (sessionHistory.length === 0) {
         isNewSession = true;
       }
+      
+      // Clear session memory if this is a new session
+      if (isNewSession) {
+        clearSessionMemory(userId);
+        debugLog('DEBUG: Cleared session memory for invalid userId new session');
+      }
+      
       recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
       debugLog('DEBUG: Session memory messages:', recentMessages.length);
     }
