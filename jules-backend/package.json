@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo '🚨🚨🚨 BUILD TEST - This should appear during build process 🚨🚨🚨' && echo '🚨🚨🚨 Build timestamp:' $(date) && echo '🚨🚨🚨 === BUILD TEST END ==='"
   },
   "keywords": [],
   "author": "",
