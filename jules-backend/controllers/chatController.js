@@ -757,10 +757,27 @@ async function handleChatInternal(message, req, res) {
       systemPrompt += `\n\nNEW SESSION: This is a new conversation session. Start with a simple greeting like "Hi ${userName}! What's going on?" Do not ask for basic info or introduce yourself extensively.`;
     }
     
+    // === FIXED MESSAGE ASSEMBLY: Separate Current Message from History ===
+    // Create messages array with clear separation between conversation history and current message
+    const conversationHistory = recentMessages.slice(0, -1); // All messages except the current one
+    const currentMessage = recentMessages[recentMessages.length - 1]; // The current message to respond to
+    
     const messages = [
       { role: 'system', content: systemPrompt },
-      ...recentMessages
+      // Add conversation history for context (if any)
+      ...conversationHistory,
+      // Add current message clearly marked
+      { 
+        role: 'user', 
+        content: `CURRENT MESSAGE TO RESPOND TO: ${currentMessage.content}` 
+      }
     ];
+    
+    debugLog('DEBUG: === MESSAGE ASSEMBLY DEBUG ===');
+    debugLog('DEBUG: Conversation history messages:', conversationHistory.length);
+    debugLog('DEBUG: Current message to respond to:', currentMessage.content);
+    debugLog('DEBUG: Total messages for OpenAI:', messages.length);
+    debugLog('DEBUG: === END MESSAGE ASSEMBLY DEBUG ===');
     const messageCount = messages.length;
     // === Max tokens per mode ===
     let maxTokens = modeConfig.max_tokens || 2000;
