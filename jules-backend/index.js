@@ -53,13 +53,17 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Configure MongoDB session store
 const MongoStore = require('connect-mongo');
 
+// Debug environment variables
+console.log('DEBUG: MONGODB_URI available:', !!process.env.MONGODB_URI);
+console.log('DEBUG: MONGODB_URI value:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+
 // Apply session middleware to all API routes that need session persistence
 app.use('/api', session({ 
   secret: 'jules_secret', 
   resave: false, 
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/jules',
     collectionName: 'sessions'
   })
 }));
