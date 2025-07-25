@@ -581,6 +581,9 @@ async function handleChatInternal(message, req, res) {
         if (forceClearSession) {
           clearSessionMemory(userId);
           debugLog('DEBUG: FORCE CLEARED session memory due to inconsistencies');
+          // Force this to be a new session when inconsistencies are detected
+          isNewSession = true;
+          debugLog('DEBUG: FORCED isNewSession = true due to inconsistencies');
           // Re-get session history after clearing
           const freshSessionHistory = getSessionHistory(userId);
           debugLog('DEBUG: Fresh session history length after force clear:', freshSessionHistory.length);
