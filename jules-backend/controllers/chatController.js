@@ -511,7 +511,9 @@ async function handleChatInternal(message, req, res) {
             isNewSession = true;
             // Clear conversation for new session
             conversation.messages = [];
-            debugLog('DEBUG: Cleared conversation for new session (30+ min gap)');
+            // Save the cleared conversation to database
+            await conversation.save();
+            debugLog('DEBUG: Cleared conversation for new session (30+ min gap) and saved to database');
           }
         }
         
