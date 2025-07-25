@@ -14,6 +14,88 @@ const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRe
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// === MESSAGE QUEUE SYSTEM ===
+// Global message queues per user to ensure sequential processing
+const userMessageQueues = new Map();
+const MAX_QUEUE_SIZE = 10; // Prevent memory overflow
+const MESSAGE_TIMEOUT = 30000; // 30 seconds timeout
+
+// Process messages sequentially for each user
+async function processMessageSequentially(userId, message, req, res) {
+  if (!userMessageQueues.has(userId)) {
+    userMessageQueues.set(userId, []);
+  }
+  
+  const queue = userMessageQueues.get(userId);
+  
+  // Check queue size limit
+  if (queue.length >= MAX_QUEUE_SIZE) {
+    debugLog('DEBUG: Queue full for userId:', userId, 'rejecting message');
+    return res.status(429).json({ error: 'Too many pending messages. Please wait.' });
+  }
+  
+  return new Promise((resolve, reject) => {
+    const messageId = Date.now() + Math.random();
+    const timeout = setTimeout(() => {
+      // Remove from queue if timeout
+      const index = queue.findIndex(item => item.messageId === messageId);
+      if (index > -1) {
+        queue.splice(index, 1);
+      }
+      reject(new Error('Message processing timeout'));
+    }, MESSAGE_TIMEOUT);
+    
+    queue.push({ 
+      messageId, 
+      message, 
+      req, 
+      res, 
+      resolve, 
+      reject, 
+      timeout 
+    });
+    
+    debugLog('DEBUG: Added message to queue for userId:', userId, 'queue length:', queue.length);
+    processQueue(userId);
+  });
+}
+
+// Process the queue for a specific user
+async function processQueue(userId) {
+  const queue = userMessageQueues.get(userId);
+  if (!queue || queue.length === 0) {
+    return;
+  }
+  
+  // Check if already processing
+  if (queue[0].processing) {
+    return;
+  }
+  
+  const item = queue[0];
+  item.processing = true;
+  
+  try {
+    debugLog('DEBUG: Processing message from queue for userId:', userId);
+    const result = await handleChatInternal(item.message, item.req, item.res);
+    clearTimeout(item.timeout);
+    item.resolve(result);
+  } catch (error) {
+    debugLog('DEBUG: Error processing message from queue:', error.message);
+    clearTimeout(item.timeout);
+    item.reject(error);
+  } finally {
+    // Remove processed item from queue
+    queue.shift();
+    item.processing = false;
+    
+    // Process next item if any
+    if (queue.length > 0) {
+      processQueue(userId);
+    }
+  }
+}
+
 // === MULTI-INTENT ROUTING & MODULAR PROMPT LOGIC ===
 const fs = require('fs');
 const path = require('path');
@@ -269,10 +351,52 @@ function shouldHandleWomensFashion(message) {
   return isGiftingContext || !isDirectRequest;
 }
 
-// Handle chat requests
+// Handle chat requests with message queue for sequential processing
 exports.handleChat = async (req, res) => {
   try {
     const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required.' });
+    }
+    
+    let userId;
+    
+    // Check for user ID from JWT token (handles both Auth0 and Google OAuth)
+    if (req.user?.sub) {
+      // Auth0 format
+      userId = req.user.sub;
+    } else if (req.user?.userId) {
+      // Google OAuth format
+      userId = req.user.userId;
+    } else {
+      const host = req.headers.host || '';
+      const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+      
+      if (isLocalhost) {
+        // Create a consistent MongoDB ObjectId for test user to enable MongoDB session testing
+        const mongoose = require('mongoose');
+        userId = new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'); // Consistent test user ID
+        console.warn("⚠️ Using test_user ObjectId for local development. MongoDB session testing enabled.");
+      } else {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+    }
+    
+    console.log(`✅ Using user ID: ${userId}`);
+    
+    // Use message queue for sequential processing
+    await processMessageSequentially(userId, message, req, res);
+    
+  } catch (err) {
+    console.error('Chat handler error:', err);
+    return res.json({ reply: "Ugh, tech hiccup. But I'm still here—hit me again or ask anything!", products: [] });
+  }
+};
+
+// Internal chat handler (original implementation)
+async function handleChatInternal(message, req, res) {
+  try {
     
     debugLog('DEBUG: handleChat called. Incoming message:', message);
     debugLog('DEBUG: Request body:', req.body);
