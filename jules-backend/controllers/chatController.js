@@ -515,8 +515,13 @@ async function handleChatInternal(message, req, res) {
           }
         }
         // Load conversation history for context (empty if new session)
-        recentMessages = conversation.messages.slice(-10);
-        debugLog('DEBUG: Loaded recent messages from database:', recentMessages.length);
+        if (isNewSession) {
+          recentMessages = [];
+          debugLog('DEBUG: New session - starting with empty recentMessages');
+        } else {
+          recentMessages = conversation.messages.slice(-10);
+          debugLog('DEBUG: Loaded recent messages from database:', recentMessages.length);
+        }
         
         // === ENHANCED DEBUGGING: Session vs Database Comparison ===
         const sessionHistory = getSessionHistory(userId);
