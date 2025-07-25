@@ -1,6 +1,6 @@
 {
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://jules-production-2221.up.railway.app"
+    "NEXT_PUBLIC_API_URL": "https://jules-4ckg.onrender.com"
   },
   "buildCommand": "npm run build",
   "outputDirectory": ".next",

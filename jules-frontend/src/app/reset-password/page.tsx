@@ -33,7 +33,7 @@ export default function ResetPassword() {
 
     try {
       // Call the reset password API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://jules-production-2221.up.railway.app'}/api/auth/reset-password`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://jules-4ckg.onrender.com'}/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

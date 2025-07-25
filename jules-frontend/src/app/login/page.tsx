@@ -50,7 +50,7 @@ function LoginInner() {
     // Redirect to backend Google OAuth
     const apiUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
       ? 'http://localhost:4000' 
-      : 'https://jules-production-2221.up.railway.app';
+      : 'https://jules-4ckg.onrender.com';
     window.location.href = `${apiUrl}/api/auth/google`;
   };
 
