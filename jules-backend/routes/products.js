@@ -159,7 +159,8 @@ function buildSearchQuery(context) {
   } else {
     // Default clothing search - prioritize specific brands mentioned
     if (context.brand && context.product) {
-      searchQuery = `"${context.brand}" men's ${context.product} buy shop purchase`;
+      // If we have both brand and specific product, search for the exact combination
+      searchQuery = `"${context.brand}" "${context.product}" men's buy shop purchase`;
     } else if (context.brand) {
       searchQuery = `"${context.brand}" men's ${context.product || 'clothing'} buy shop purchase`;
     } else if (context.product) {
@@ -219,12 +220,24 @@ router.post('/', auth, async (req, res) => {
     
     let allProducts = [];
     
-    // If we have specific brands from Jules's response, search for each one
-    if (allBrands.length > 0) {
-      for (const brand of allBrands.slice(0, 3)) { // Limit to 3 brands to avoid too many API calls
-        const brandContext = { ...context, brand };
-        const searchQuery = buildSearchQuery(brandContext);
-        console.log(`DEBUG: Searching for brand "${brand}":`, searchQuery);
+      // If we have specific brands from Jules's response, search for each one
+  if (allBrands.length > 0) {
+    for (const brand of allBrands.slice(0, 3)) { // Limit to 3 brands to avoid too many API calls
+      // Try to find specific product names mentioned with this brand
+      let specificProduct = null;
+      if (julesResponse) {
+        // Look for specific product names mentioned with the brand
+        const brandProductPattern = new RegExp(`${brand}\\s+([\\w\\s]+?)(?:\\s|,|\\?|\\.|$)`, 'i');
+        const match = julesResponse.match(brandProductPattern);
+        if (match && match[1]) {
+          specificProduct = match[1].trim();
+          console.log(`DEBUG: Found specific product "${specificProduct}" for brand "${brand}"`);
+        }
+      }
+      
+      const brandContext = { ...context, brand, product: specificProduct || context.product };
+      const searchQuery = buildSearchQuery(brandContext);
+      console.log(`DEBUG: Searching for brand "${brand}":`, searchQuery);
         
         try {
           const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
