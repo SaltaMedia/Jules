@@ -768,6 +768,14 @@ async function handleChatInternal(message, req, res) {
     const conversationHistory = recentMessages.slice(0, -1); // All messages except the current one
     const currentMessage = recentMessages[recentMessages.length - 1]; // The current message to respond to
     
+    // === CRITICAL DEBUG: Check what's actually in recentMessages ===
+    debugLog('DEBUG: === CRITICAL MESSAGE DEBUG ===');
+    debugLog('DEBUG: Incoming message:', message);
+    debugLog('DEBUG: recentMessages length:', recentMessages.length);
+    debugLog('DEBUG: recentMessages contents:', JSON.stringify(recentMessages.map(m => ({ role: m.role, content: m.content.substring(0, 50) + '...' })), null, 2));
+    debugLog('DEBUG: currentMessage from recentMessages:', currentMessage ? { role: currentMessage.role, content: currentMessage.content } : 'null');
+    debugLog('DEBUG: === END CRITICAL MESSAGE DEBUG ===');
+    
     // Ensure we have a current message to respond to
     let messages;
     if (!currentMessage) {
