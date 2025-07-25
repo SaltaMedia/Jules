@@ -128,28 +128,24 @@ export default function Chat() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
     const messageText = inputText;
     setInputText("");
-    setIsLoading(true);
 
     const userId = getUserIdFromToken() || '687986e4107cd935660bd46d'; // Use test user if no token
 
     try {
       // Send message to backend and let it handle all product detection
       const data = await chat.sendMessage(messageText, userId);
-      
-      // Generate sequential IDs for Jules's response messages
-      const julesTextMessage: Message = {
-        id: `${messageId}-jules-text`,
-        text: data.reply || data.response || "I'm having trouble responding right now. Try again!",
-        sender: "jules",
+      // Use backend's message array for correct ordering
+      const backendMessages = (data.messages || []).map((msg: any, idx: number) => ({
+        id: `${messageId}-backend-${idx}`,
+        text: msg.content,
+        sender: msg.role === 'assistant' ? 'jules' : 'user',
         timestamp: new Date(),
         type: "text"
-      };
-      
-      const newMessages: Message[] = [julesTextMessage];
-      
+      }));
+      const newMessages: Message[] = [...backendMessages];
       if (data.images && data.images.length > 0) {
         newMessages.push({
           id: `${messageId}-jules-images`,
@@ -159,7 +155,6 @@ export default function Chat() {
           images: data.images
         });
       }
-      
       if (data.products && data.products.length > 0) {
         newMessages.push({
           id: `${messageId}-jules-products`,
@@ -169,16 +164,7 @@ export default function Chat() {
           products: data.products
         });
       }
-      
-      // Use functional update to ensure we're working with the latest state
-      setMessages((prev) => {
-        // Ensure we don't add duplicate messages
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage && lastMessage.id === messageId) {
-          return [...prev, ...newMessages];
-        }
-        return prev;
-      });
+      setMessages((prev) => [...prev, ...newMessages]);
     } catch (error) {
       console.error("Error sending message:", error);
       let errorText = "Sorry, I'm having trouble connecting right now. Please try again!";
