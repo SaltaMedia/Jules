@@ -121,13 +121,6 @@ export default function Chat() {
     // Generate a unique message ID using timestamp + random number to prevent conflicts
     const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const userMessage: Message = {
-      id: messageId,
-      text: inputText,
-      sender: "user",
-      timestamp: new Date(),
-    };
-
     setIsLoading(true);
     const messageText = inputText;
     setInputText("");
@@ -138,7 +131,7 @@ export default function Chat() {
       // Send message to backend and let it handle all product detection
       const data = await chat.sendMessage(messageText, userId);
       // Use backend's message array for correct ordering
-      const backendMessages = (data.messages || []).map((msg: any, idx: number) => ({
+      const backendMessages = (data.messages || []).map((msg: { role: string; content: string }, idx: number) => ({
         id: `${messageId}-backend-${idx}`,
         text: msg.content,
         sender: msg.role === 'assistant' ? 'jules' : 'user',
@@ -273,7 +266,7 @@ export default function Chat() {
                   <div className="flex gap-2 mt-2">
                     {message.images.slice(0, 4).map((url, idx) => (
                       safeString(url) ? (
-                        <img key={idx} src={safeString(url)} alt={safeString(url) || 'Outfit example'} className="w-40 h-48 object-cover rounded-lg shadow" />
+                        <Image key={idx} src={safeString(url)} alt={safeString(url) || 'Outfit example'} width={160} height={192} className="w-40 h-48 object-cover rounded-lg shadow" />
                       ) : (
                         <div key={idx} className="w-40 h-48 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg shadow">No Image</div>
                       )
@@ -293,7 +286,7 @@ export default function Chat() {
                         style={{ textDecoration: 'none' }}
                       >
                         {safeString(prod.image) ? (
-                          <img src={safeString(prod.image)} alt={safeString(prod.title) || 'Product image'} className="w-32 h-32 object-contain mb-2 rounded" />
+                          <Image src={safeString(prod.image)} alt={safeString(prod.title) || 'Product image'} width={128} height={128} className="w-32 h-32 object-contain mb-2 rounded" />
                         ) : (
                           <div className="w-32 h-32 flex items-center justify-center bg-gray-100 text-gray-400 mb-2 rounded">No Image</div>
                         )}
