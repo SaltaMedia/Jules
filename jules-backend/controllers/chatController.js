@@ -618,6 +618,12 @@ async function handleChatInternal(message, req, res) {
     debugLog('DEBUG: Is new session:', isNewSession);
     debugLog('DEBUG: Recent messages count:', recentMessages.length);
     
+    // === FORCE DEPLOYMENT TEST ===
+    debugLog('🚨 FORCE DEPLOYMENT TEST - This message should appear if deployment is working 🚨');
+    debugLog('🚨 Current timestamp:', new Date().toISOString());
+    debugLog('🚨 Git commit:', '3e71ebd - AGGRESSIVE FIX: Force clear session memory');
+    debugLog('🚨 === FORCE DEPLOYMENT TEST END ===');
+    
     // === COMPREHENSIVE DEBUGGING ===
     debugLog('DEBUG: === COMPREHENSIVE DEBUGGING START ===');
     debugLog('DEBUG: User ID:', userId);
