@@ -1,10 +1,24 @@
+// Load dotenv only in development (Railway provides env vars in production)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const { OpenAI } = require('openai');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary, addSessionMessage, getSessionHistory } = require('../utils/userMemoryStore');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize OpenAI client lazily to avoid startup issues
+let openai = null;
+function getOpenAI() {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is required');
+    }
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 // Style-specific system prompt
 function getStyleSystemPrompt(userGender = 'male') {
@@ -200,7 +214,7 @@ exports.handleStyle = async (req, res) => {
     ];
     
     // Call OpenAI
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages,
       max_tokens: 3000,
