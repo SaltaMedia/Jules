@@ -4,9 +4,14 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 console.log('Starting server...');
-// Always load dotenv (works in both dev and production)
-require('dotenv').config();
-console.log('dotenv loaded');
+// Load dotenv only in development (Railway provides env vars in production)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+  console.log('dotenv loaded (development)');
+} else {
+  console.log('Using Railway environment variables (production)');
+  console.log('DEBUG: NODE_ENV is production, environment variables should be available');
+}
 
 const express = require('express');
 console.log('express loaded');
