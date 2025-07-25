@@ -444,8 +444,17 @@ exports.handleChat = async (req, res) => {
 
         // Save the static message to conversation and return it
         if (mongoose.Types.ObjectId.isValid(userId)) {
-          conversation.messages.push({ role: 'user', content: message });
-          conversation.messages.push({ role: 'assistant', content: vagueResponse });
+          const currentTime = new Date();
+          conversation.messages.push({ 
+            role: 'user', 
+            content: message, 
+            timestamp: currentTime 
+          });
+          conversation.messages.push({ 
+            role: 'assistant', 
+            content: vagueResponse, 
+            timestamp: new Date(currentTime.getTime() + 1) 
+          });
           await conversation.save();
         }
         return res.json({ reply: vagueResponse, products: [] });
@@ -537,7 +546,11 @@ exports.handleChat = async (req, res) => {
       // Only add to recentMessages if not already there
       const lastMessage = recentMessages[recentMessages.length - 1];
       if (!lastMessage || lastMessage.content !== message || lastMessage.role !== 'user') {
-        recentMessages.push({ role: 'user', content: message });
+        recentMessages.push({ 
+          role: 'user', 
+          content: message, 
+          timestamp: new Date() 
+        });
       }
       
       // DON'T save user message to database yet - wait until we have the AI response
@@ -547,7 +560,11 @@ exports.handleChat = async (req, res) => {
       const sessionHistory = getSessionHistory(userId);
       const lastSessionMessage = sessionHistory[sessionHistory.length - 1];
       if (!lastSessionMessage || lastSessionMessage.content !== message || lastSessionMessage.role !== 'user') {
-        recentMessages.push({ role: 'user', content: message });
+        recentMessages.push({ 
+          role: 'user', 
+          content: message, 
+          timestamp: new Date() 
+        });
         debugLog('DEBUG: Added user message to session memory');
       } else {
         debugLog('DEBUG: User message already exists in session memory, skipping add');
@@ -638,7 +655,11 @@ exports.handleChat = async (req, res) => {
     // Add assistant's response to session memory (avoid duplicates)
     const lastSessionMessage = getSessionHistory(userId).slice(-1)[0];
     if (!lastSessionMessage || lastSessionMessage.content !== reply) {
-      addSessionMessage(userId, { role: "assistant", content: reply });
+      addSessionMessage(userId, { 
+        role: "assistant", 
+        content: reply, 
+        timestamp: new Date() 
+      });
       debugLog('DEBUG: Added assistant response to session memory');
     } else {
       debugLog('DEBUG: Assistant response already exists in session memory, skipping add');
@@ -773,11 +794,20 @@ exports.handleChat = async (req, res) => {
     // Save conversation to database (only once)
     if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
       // Save both user message and assistant response together to ensure proper ordering
-      conversation.messages.push({ role: 'user', content: message });
-      conversation.messages.push({ role: 'assistant', content: finalReply });
+      const currentTime = new Date();
+      conversation.messages.push({ 
+        role: 'user', 
+        content: message, 
+        timestamp: currentTime 
+      });
+      conversation.messages.push({ 
+        role: 'assistant', 
+        content: finalReply, 
+        timestamp: new Date(currentTime.getTime() + 1) // Ensure assistant message comes after user message
+      });
       try {
         await conversation.save();
-        debugLog('DEBUG: Conversation saved successfully with both messages');
+        debugLog('DEBUG: Conversation saved successfully with both messages and timestamps');
       } catch (saveError) {
         debugLog('DEBUG: Error saving conversation:', saveError.message);
         // Don't fail the request if save fails

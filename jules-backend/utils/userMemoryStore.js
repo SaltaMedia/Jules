@@ -113,7 +113,12 @@ Recent goals: ${goals}
 // Session memory functions
 function addSessionMessage(userId, message) {
   const memory = getUserMemory(userId);
-  memory.recentMessages.push(message);
+  // Add timestamp if not present
+  const messageWithTimestamp = {
+    ...message,
+    timestamp: message.timestamp || new Date()
+  };
+  memory.recentMessages.push(messageWithTimestamp);
   
   // Keep only the last 10 messages
   if (memory.recentMessages.length > 10) {
