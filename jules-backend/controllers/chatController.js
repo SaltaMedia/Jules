@@ -707,48 +707,24 @@ async function handleChatInternal(message, req, res) {
     }
     
     // === Assemble messages for OpenAI ===
-    // Add current message to conversation history (avoid duplicates)
-    if (mongoose.Types.ObjectId.isValid(userId)) {
-      // Only add to recentMessages if not already there
-      const lastMessage = recentMessages[recentMessages.length - 1];
-      if (!lastMessage || lastMessage.content !== message || lastMessage.role !== 'user') {
-        recentMessages.push({ 
-          role: 'user', 
-          content: message, 
-          timestamp: new Date() 
-        });
-      }
-      
-      // DON'T save user message to database yet - wait until we have the AI response
-      // This prevents race conditions in production
-    } else {
-      // For invalid userIds (like test_user), use session memory to track conversation
-      const sessionHistory = getSessionHistory(userId);
-      const lastSessionMessage = sessionHistory[sessionHistory.length - 1];
-      if (!lastSessionMessage || lastSessionMessage.content !== message || lastSessionMessage.role !== 'user') {
-        recentMessages.push({ 
-          role: 'user', 
-          content: message, 
-          timestamp: new Date() 
-        });
-        debugLog('DEBUG: Added user message to session memory');
-      } else {
-        debugLog('DEBUG: User message already exists in session memory, skipping add');
-      }
-    }
+    // === SIMPLIFIED: Always add current message to recentMessages ===
+    // This ensures the current message is always the last message in the array
+    const currentMessageObj = { 
+      role: 'user', 
+      content: message, 
+      timestamp: new Date() 
+    };
     
-    // Ensure all messages are proper objects and add current message
-    recentMessages = recentMessages.map(msg => {
-      if (typeof msg === 'string') {
-        return { role: 'user', content: msg };
-      }
-      return msg;
-    });
+    // Remove any duplicate of the current message that might exist
+    recentMessages = recentMessages.filter(msg => 
+      !(msg.content === message && msg.role === 'user')
+    );
     
-    // Add current message (only if not already added for valid userIds)
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      recentMessages.push({ role: 'user', content: message });
-    }
+    // Add the current message as the last message
+    recentMessages.push(currentMessageObj);
+    
+    debugLog('DEBUG: Added current message to recentMessages:', message);
+    debugLog('DEBUG: Total messages in recentMessages:', recentMessages.length);
     
     // === USER PROFILE CHECK ===
     const hasUserProfile = user && user._id && (user.name || user.email);
@@ -774,16 +750,29 @@ async function handleChatInternal(message, req, res) {
     const conversationHistory = recentMessages.slice(0, -1); // All messages except the current one
     const currentMessage = recentMessages[recentMessages.length - 1]; // The current message to respond to
     
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      // Add conversation history for context (if any)
-      ...conversationHistory,
-      // Add current message clearly marked
-      { 
-        role: 'user', 
-        content: `CURRENT MESSAGE TO RESPOND TO: ${currentMessage.content}` 
-      }
-    ];
+    // Ensure we have a current message to respond to
+    let messages;
+    if (!currentMessage) {
+      debugLog('DEBUG: No current message found, using the incoming message');
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { 
+          role: 'user', 
+          content: `CURRENT MESSAGE TO RESPOND TO: ${message}` 
+        }
+      ];
+    } else {
+      messages = [
+        { role: 'system', content: systemPrompt },
+        // Add conversation history for context (if any)
+        ...conversationHistory,
+        // Add current message clearly marked
+        { 
+          role: 'user', 
+          content: `CURRENT MESSAGE TO RESPOND TO: ${currentMessage.content}` 
+        }
+      ];
+    }
     
     debugLog('DEBUG: === MESSAGE ASSEMBLY DEBUG ===');
     debugLog('DEBUG: Conversation history messages:', conversationHistory.length);
