@@ -121,24 +121,35 @@ export default function Chat() {
     // Generate a unique message ID using timestamp + random number to prevent conflicts
     const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    setIsLoading(true);
+    const userMessage: Message = {
+      id: messageId,
+      text: inputText,
+      sender: "user",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
     const messageText = inputText;
     setInputText("");
+    setIsLoading(true);
 
     const userId = getUserIdFromToken() || '687986e4107cd935660bd46d'; // Use test user if no token
 
     try {
       // Send message to backend and let it handle all product detection
       const data = await chat.sendMessage(messageText, userId);
-      // Use backend's message array for correct ordering
-      const backendMessages = (data.messages || []).map((msg: { role: string; content: string }, idx: number) => ({
-        id: `${messageId}-backend-${idx}`,
-        text: msg.content,
-        sender: msg.role === 'assistant' ? 'jules' : 'user',
+      
+      // Generate sequential IDs for Jules's response messages
+      const julesTextMessage: Message = {
+        id: `${messageId}-jules-text`,
+        text: data.reply || data.response || "I'm having trouble responding right now. Try again!",
+        sender: "jules",
         timestamp: new Date(),
         type: "text"
-      }));
-      const newMessages: Message[] = [...backendMessages];
+      };
+      
+      const newMessages: Message[] = [julesTextMessage];
+      
       if (data.images && data.images.length > 0) {
         newMessages.push({
           id: `${messageId}-jules-images`,
@@ -148,6 +159,7 @@ export default function Chat() {
           images: data.images
         });
       }
+      
       if (data.products && data.products.length > 0) {
         newMessages.push({
           id: `${messageId}-jules-products`,
@@ -157,7 +169,16 @@ export default function Chat() {
           products: data.products
         });
       }
-      setMessages((prev) => [...prev, ...newMessages]);
+      
+      // Use functional update to ensure we're working with the latest state
+      setMessages((prev) => {
+        // Ensure we don't add duplicate messages
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage && lastMessage.id === messageId) {
+          return [...prev, ...newMessages];
+        }
+        return prev;
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       let errorText = "Sorry, I'm having trouble connecting right now. Please try again!";
@@ -266,7 +287,7 @@ export default function Chat() {
                   <div className="flex gap-2 mt-2">
                     {message.images.slice(0, 4).map((url, idx) => (
                       safeString(url) ? (
-                        <Image key={idx} src={safeString(url)} alt={safeString(url) || 'Outfit example'} width={160} height={192} className="w-40 h-48 object-cover rounded-lg shadow" />
+                        <img key={idx} src={safeString(url)} alt={safeString(url) || 'Outfit example'} className="w-40 h-48 object-cover rounded-lg shadow" />
                       ) : (
                         <div key={idx} className="w-40 h-48 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg shadow">No Image</div>
                       )
@@ -286,7 +307,7 @@ export default function Chat() {
                         style={{ textDecoration: 'none' }}
                       >
                         {safeString(prod.image) ? (
-                          <Image src={safeString(prod.image)} alt={safeString(prod.title) || 'Product image'} width={128} height={128} className="w-32 h-32 object-contain mb-2 rounded" />
+                          <img src={safeString(prod.image)} alt={safeString(prod.title) || 'Product image'} className="w-32 h-32 object-contain mb-2 rounded" />
                         ) : (
                           <div className="w-32 h-32 flex items-center justify-center bg-gray-100 text-gray-400 mb-2 rounded">No Image</div>
                         )}

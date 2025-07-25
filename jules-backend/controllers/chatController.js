@@ -783,19 +783,11 @@ exports.handleChat = async (req, res) => {
         // Don't fail the request if save fails
       }
     }
-
+    
     debugLog('DEBUG: About to send JSON response');
     // Only include products in response if showProductCards is true
     const finalProducts = showProductCards ? products : [];
-    // Return both user and assistant messages for frontend ordering
-    res.json({
-      messages: [
-        { role: 'user', content: message },
-        { role: 'assistant', content: finalReply }
-      ],
-      reply: finalReply,
-      products: finalProducts
-    });
+    res.json({ reply: finalReply, products: finalProducts });
     debugLog('DEBUG: JSON response sent successfully');
   } catch (err) {
     // Handle CastError specifically for invalid userIds
