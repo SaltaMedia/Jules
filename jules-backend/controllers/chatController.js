@@ -509,11 +509,24 @@ async function handleChatInternal(message, req, res) {
           const lastMessage = conversation.messages[conversation.messages.length - 1];
           if (!lastMessage || lastMessage.timestamp < thirtyMinutesAgo) {
             isNewSession = true;
-            // Clear conversation for new session
-            conversation.messages = [];
-            // Save the cleared conversation to database
-            await conversation.save();
-            debugLog('DEBUG: Cleared conversation for new session (30+ min gap) and saved to database');
+            // Force delete old conversation and create new one
+            try {
+              await Conversation.deleteOne({ userId });
+              debugLog('DEBUG: Deleted old conversation from database');
+              conversation = new Conversation({ userId, messages: [] });
+              await conversation.save();
+              debugLog('DEBUG: Created new conversation for new session (30+ min gap)');
+            } catch (deleteError) {
+              debugLog('DEBUG: ERROR deleting/creating conversation:', deleteError.message);
+              // Fallback: clear messages
+              conversation.messages = [];
+              try {
+                await conversation.save();
+                debugLog('DEBUG: Fallback: cleared conversation messages');
+              } catch (saveError) {
+                debugLog('DEBUG: ERROR in fallback save:', saveError.message);
+              }
+            }
           }
         }
         
@@ -529,6 +542,8 @@ async function handleChatInternal(message, req, res) {
         } else {
           recentMessages = conversation.messages.slice(-10);
           debugLog('DEBUG: Loaded recent messages from database:', recentMessages.length);
+          debugLog('DEBUG: Database conversation messages count:', conversation.messages.length);
+          debugLog('DEBUG: Database conversation messages:', JSON.stringify(conversation.messages.map(m => ({ role: m.role, content: m.content.substring(0, 30) + '...' })), null, 2));
         }
         
         // === ENHANCED DEBUGGING: Session vs Database Comparison ===
@@ -590,6 +605,16 @@ async function handleChatInternal(message, req, res) {
     
     debugLog('DEBUG: Is new session:', isNewSession);
     debugLog('DEBUG: Recent messages count:', recentMessages.length);
+    
+    // === COMPREHENSIVE DEBUGGING ===
+    debugLog('DEBUG: === COMPREHENSIVE DEBUGGING START ===');
+    debugLog('DEBUG: User ID:', userId);
+    debugLog('DEBUG: User ID type:', typeof userId);
+    debugLog('DEBUG: Is valid ObjectId:', mongoose.Types.ObjectId.isValid(userId));
+    debugLog('DEBUG: Incoming message:', message);
+    debugLog('DEBUG: Environment:', process.env.NODE_ENV);
+    debugLog('DEBUG: MongoDB URI available:', !!process.env.MONGODB_URI);
+    debugLog('DEBUG: === COMPREHENSIVE DEBUGGING END ===');
     
     // === VAGUE CHAT ESCALATION SYSTEM ===
     const userMemory = getUserMemory(userId);
