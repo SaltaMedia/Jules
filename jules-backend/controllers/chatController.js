@@ -190,7 +190,7 @@ function classifyIntent(input) {
   // Vague chat detection moved to main handler for escalating tone
   
   if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
-  if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("try this")) return "practice";
+  if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("let's practice") || msg.includes("can we practice")) return "practice";
   // Product requests - only trigger for explicit purchase intent
   if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("where to buy") || msg.includes("shop for") || msg.includes("find me") || msg.includes("get me") || msg.includes("purchase") || msg.includes("order")) {
     debugLog('DEBUG: classifyIntent detected product_request via purchase keywords');
