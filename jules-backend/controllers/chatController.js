@@ -1,3 +1,7 @@
+// 🚨🚨🚨 FORCE MODULE RELOAD - TIMESTAMP: 2025-07-26 18:53:00 UTC 🚨🚨🚨
+// 🚨🚨🚨 This should force Node.js to reload this module with latest code 🚨🚨🚨
+console.log('🚨🚨🚨 CHAT CONTROLLER RELOADED - TIMESTAMP: 2025-07-26 18:53:00 UTC 🚨🚨🚨');
+
 // Load dotenv only in development (Railway provides env vars in production)
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
