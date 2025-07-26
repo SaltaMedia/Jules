@@ -6,6 +6,7 @@
 
 console.log("🚨🚨🚨 RUNNING BUILD VERSION: 3.1.7 - CLEAN BUILD FORCE 🚨🚨🚨");
 console.log("🚨🚨🚨 If you see this, the clean build worked! 🚨🚨🚨");
+console.log("🚨🚨🚨 NODE VERSION FORCE REBUILD - This should trigger complete rebuild 🚨🚨🚨");
 
 require('dotenv').config();
 

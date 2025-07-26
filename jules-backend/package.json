@@ -1,7 +1,11 @@
 {
   "name": "jules-backend",
-  "version": "1.0.0",
+  "version": "3.1.7",
+  "description": "Jules AI Backend",
   "main": "index.js",
+  "engines": {
+    "node": "18.19.0"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
@@ -12,7 +16,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
