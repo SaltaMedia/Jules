@@ -588,6 +588,30 @@ async function handleChatInternal(message, req, res) {
           // Force this to be a new session when inconsistencies are detected
           isNewSession = true;
           debugLog('DEBUG: FORCED isNewSession = true due to inconsistencies');
+          
+          // CRITICAL FIX: Actually clear the database and reset recentMessages
+          try {
+            await Conversation.deleteOne({ userId });
+            debugLog('DEBUG: FORCE DELETED conversation from database due to inconsistencies');
+            conversation = new Conversation({ userId, messages: [] });
+            await conversation.save();
+            debugLog('DEBUG: FORCE CREATED new conversation due to inconsistencies');
+            recentMessages = []; // Reset recentMessages to empty
+            debugLog('DEBUG: FORCE RESET recentMessages to empty due to inconsistencies');
+          } catch (deleteError) {
+            debugLog('DEBUG: ERROR force deleting/creating conversation:', deleteError.message);
+            // Fallback: clear messages
+            conversation.messages = [];
+            try {
+              await conversation.save();
+              debugLog('DEBUG: Fallback: cleared conversation messages');
+            } catch (saveError) {
+              debugLog('DEBUG: ERROR in fallback save:', saveError.message);
+            }
+            recentMessages = []; // Still reset recentMessages
+            debugLog('DEBUG: Fallback: reset recentMessages to empty');
+          }
+          
           // Re-get session history after clearing
           const freshSessionHistory = getSessionHistory(userId);
           debugLog('DEBUG: Fresh session history length after force clear:', freshSessionHistory.length);
@@ -628,7 +652,7 @@ async function handleChatInternal(message, req, res) {
     // === FORCE DEPLOYMENT TEST ===
     debugLog('🚨 FORCE DEPLOYMENT TEST - This message should appear if deployment is working 🚨');
     debugLog('🚨 Current timestamp:', new Date().toISOString());
-    debugLog('🚨 Git commit:', '3e71ebd - AGGRESSIVE FIX: Force clear session memory');
+    debugLog('🚨 Git commit:', '64c35c1 - FORCE NODE VERSION REBUILD - CRITICAL FIX: Actually clear database');
     debugLog('🚨 === FORCE DEPLOYMENT TEST END ===');
     
     // === COMPREHENSIVE DEBUGGING ===
