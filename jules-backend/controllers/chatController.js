@@ -312,7 +312,9 @@ exports.handleChat = async (req, res) => {
   const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|schott|allsaints|leather)/i.test(message);
   
   // Very specific shopping triggers - only when explicitly asking for products/links
-  const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|need|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message);
+  // Exclude negative statements like "don't need", "no jacket", etc.
+  const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message) && 
+    !/(don't|dont|no\s+need|not\s+need|no\s+want|not\s+want|no\s+get|not\s+get|definitely\s+no|absolutely\s+no|no\s+jacket|no\s+shirt|no\s+shoes|no\s+pants|no\s+jeans)/i.test(message);
   
   // Only trigger product search when asking about clothing/outfits AND asking for shopping links
   const isProductRequest = clothingOutfitRequest && askingForRecommendations;
