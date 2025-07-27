@@ -170,32 +170,11 @@ function stripClosers(text) {
     /(?:Let\'?s keep the style rolling.*?)$/i,
     /(?:I\'?m always ready to help.*?)$/i,
     /(?:Ready to help you.*?)$/i,
-    /(?:Just say the word.*?)$/i,
-    /(?:I\'?m here to help.*?)$/i,
     /(?:Let\'?s dial up your cool factor.*?)$/i,
     /(?:what\'?s on your mind next.*?)$/i,
     /(?:I\'?m here to chat.*?)$/i,
     /(?:let me know how I can help.*?)$/i,
     /(?:feel free to let me know.*?)$/i,
-    /(?:just let me know.*?)$/i,
-    /(?:so what\'?s on your mind.*?)$/i,
-    /(?:what\'?s next.*?)$/i,
-    /(?:anything else.*?)$/i,
-    /(?:need anything else.*?)$/i,
-    /(?:want anything else.*?)$/i,
-    /(?:can I help with anything else.*?)$/i,
-    /(?:any other questions.*?)$/i,
-    /(?:other questions.*?)$/i,
-    /(?:more questions.*?)$/i,
-    /(?:any more questions.*?)$/i,
-    /(?:got any other questions.*?)$/i,
-    /(?:have any other questions.*?)$/i,
-    /(?:any other style questions.*?)$/i,
-    /(?:other style questions.*?)$/i,
-    /(?:more style questions.*?)$/i,
-    /(?:any more style questions.*?)$/i,
-    /(?:got any other style questions.*?)$/i,
-    /(?:have any other style questions.*?)$/i,
     /(?:Have a fantastic time.*?)$/i,
     /(?:Enjoy.*?getting.*?creative.*?)$/i,
     /(?:Cheers to.*?)$/i,
@@ -220,7 +199,6 @@ function stripClosers(text) {
     /(?:crush those.*?)$/i,
     /(?:hit the gym in style.*?)$/i,
     /(?:Trust me, it's a game-changer.*?)$/i,
-    /(?:effortlessly cool.*?)$/i,
     /(?:stylish and edgy.*?)$/i,
     /(?:confidence and flair.*?)$/i,
     /(?:dominate your workouts.*?)$/i,
@@ -233,10 +211,16 @@ function stripClosers(text) {
   endCloserPatterns.forEach(pattern => {
     if (pattern.test(result)) {
       const beforeLength = result.length;
+      const beforeText = result;
       result = result.replace(pattern, '').trim();
       const afterLength = result.length;
-      if (beforeLength - afterLength > 50) {
-        console.log('DEBUG: stripClosers removed too much text:', beforeLength, '->', afterLength, 'Pattern:', pattern);
+      const removedLength = beforeLength - afterLength;
+      
+      if (removedLength > 20) {
+        console.log('DEBUG: stripClosers removed text:', removedLength, 'characters');
+        console.log('DEBUG: Pattern that matched:', pattern);
+        console.log('DEBUG: Before:', beforeText.substring(beforeText.length - 100));
+        console.log('DEBUG: After:', result.substring(result.length - 50));
       }
     }
   });
@@ -393,7 +377,7 @@ exports.handleChat = async (req, res) => {
     console.log(`DEBUG: Context-aware token limit - Message count: ${messageCount}, Type: ${isAdviceQuestion ? 'advice' : isProductRequestType ? 'product' : isSimpleQuestion ? 'simple' : 'general'}, Max tokens: ${maxTokens}`);
     
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o',
       messages,
       max_tokens: maxTokens,
     });
@@ -641,7 +625,7 @@ exports.productSearch = async (req, res) => {
   let searchQuery = query;
   try {
     const llmResult = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
         { role: 'user', content: query }
