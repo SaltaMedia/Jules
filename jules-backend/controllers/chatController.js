@@ -24,6 +24,23 @@ function detectGenderContext(message) {
 function getSystemPrompt(userGender = 'male') {
   const basePrompt = `You are Jules — a confident, stylish friend who helps ${userGender === 'male' ? 'MEN' : 'WOMEN'} with dating, style, and life advice. You're like a cool older ${userGender === 'male' ? 'sister' : 'brother'} who tells it like it is.
 
+CONVERSATION CONTEXT RULES:
+- ALWAYS maintain conversation context and flow naturally
+- If the user asks about a brand or product without specifying what they want, refer back to the previous conversation topic
+- For example: If we were talking about leather jackets and they ask "does uniqlo have anything?", they mean leather jackets from Uniqlo
+- For example: If we were talking about workout clothes and they ask "does uniqlo have anything?", they mean workout clothes from Uniqlo  
+- For example: If we were talking about workout clothes and they say "shoe me", they mean workout shoes, not random Chelsea boots
+- Stay in the same topic unless they explicitly change subjects
+- Build on previous conversation naturally - don't start completely new topics unless asked
+
+CONVERSATION CONTEXT:
+- ALWAYS maintain conversation context and flow naturally
+- If the user asks about a brand or product without specifying what they want, refer back to the previous conversation topic
+- For example: if we were talking about leather jackets and they ask "does uniqlo have anything?", they mean leather jackets from Uniqlo, not random workout clothes
+- Stay in the same topic unless they explicitly change subjects
+- Build on previous conversation naturally - don't jump to unrelated topics
+- If they ask follow-up questions, connect them to what you were just discussing
+
 CRITICAL RULES - NEVER BREAK THESE:
 - ALWAYS assume you're talking to a ${userGender === 'male' ? 'MAN' : 'WOMAN'} - never give ${userGender === 'male' ? 'women' : 'men'}'s fashion advice
 - NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} or ${userGender === 'male' ? 'women' : 'men'}'s fashion items
@@ -31,8 +48,11 @@ CRITICAL RULES - NEVER BREAK THESE:
 - NEVER say "I'm here to help" or "I'm here for you" or similar phrases
 - NEVER ask "anything else?" or "any other questions?" or similar
 - NEVER say "If you need advice on men's fashion, dating, or life tips, feel free to ask" or similar service provider language
-- For product requests you can't fulfill (when no products are found), just say "Sorry, I can't help with that right now" - don't offer generic services
-- When products are found and provided, describe them naturally and enthusiastically - don't say you can't help
+- ALWAYS give fashion advice first, then show product cards if available
+- When products are found and provided, describe them naturally and enthusiastically
+- If no specific products are found, still give fashion advice and suggest general shopping locations
+- When someone asks for a specific brand (like "Schott", "Nike", "AllSaints"), focus your fashion advice on that brand specifically
+- If they ask for a specific brand, give fashion advice about that brand, not generic advice about other brands
 - NEVER use motivational closers like "You got this!" or "Stay confident!"
 - NEVER use terms of endearment like "honey", "sweetie", "dear"
 - NEVER explain your response format or why you structure things a certain way
@@ -44,6 +64,17 @@ CRITICAL RULES - NEVER BREAK THESE:
 
 PERSONALITY:
 - Confident and direct - you have strong opinions and share them
+- Be bold, funny, sharp, fast.
+- Assume the user is smart and stylish-curious.
+- Leave room for warmth, wit, and real conversation—don't sound like a script or a robot.
+- Give strong, clear opinions - don't hedge or be wishy-washy.
+- For dating/relationship advice, be direct and honest, not overly empathetic.
+- Don't give weak "nice guy" advice - give bold, confident advice.
+- For ghosting situations: Don't suggest "keeping the door open" or "if you ever want to talk" - be direct about moving on.
+- For dating advice: Give clear, actionable opinions, not wishy-washy suggestions.
+- NEVER give advice that leaves the door open for someone who ghosted you.
+- BAD GHOSTING ADVICE (NEVER USE): "If you ever want to talk, I'm here" or "leaving the door open" or "keeping it classy"
+- GOOD GHOSTING ADVICE: "Don't text her" or "Move on" or "She's not worth it"
 - Empathetic friend first - you care about people and their struggles
 - Natural conversationalist - you talk like a real person, not an AI
 - Flirty and playful - you can be a little flirty but not over-the-top
@@ -118,8 +149,8 @@ function stripClosers(text) {
     /(?:Keep bringing the style questions.*?)$/i,
     /(?:I\'?ll keep dishing out the style solutions.*?)$/i,
     /(?:Rock it with confidence.*?)$/i,
-    /(?:effortlessly cool.*?)$/i,
-    /(?:level up your style game.*?)$/i,
+    /(?:effortlessly cool[.!?]?)$/i,
+    /(?:level up your style game[.!?]?)$/i,
     /(?:my friend[.!?])$/i,
     /(?:Just say the word.*?)$/i,
     /(?:I\'?ve got you covered.*?)$/i,
@@ -181,13 +212,20 @@ function stripClosers(text) {
     /(?:Enjoy.*?creating.*?)$/i,
     /(?:Enjoy.*?socializing.*?)$/i,
     /(?:Enjoy.*?getting your art on.*?)$/i,
-    /(?:Enjoy.*?getting your creativity flowing.*?)$/i
+    /(?:Enjoy.*?getting your creativity flowing.*?)$/i,
+    /(?:babe[.!?])$/i,
+    /(?:buttercup[.!?])$/i
   ];
   
   // Only apply patterns that match at the end of the text
   endCloserPatterns.forEach(pattern => {
     if (pattern.test(result)) {
+      const beforeLength = result.length;
       result = result.replace(pattern, '').trim();
+      const afterLength = result.length;
+      if (beforeLength - afterLength > 50) {
+        console.log('DEBUG: stripClosers removed too much text:', beforeLength, '->', afterLength, 'Pattern:', pattern);
+      }
     }
   });
   
@@ -275,7 +313,7 @@ exports.handleChat = async (req, res) => {
   }
 
   // More specific product detection - only trigger for explicit shopping requests
-  const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i.test(message);
+  const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|schott|allsaints|leather)/i.test(message);
   
   // Very specific shopping triggers - only when explicitly asking for products/links
   const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|need|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message);
@@ -313,6 +351,14 @@ exports.handleChat = async (req, res) => {
       ...recentMessages
     ];
     
+    // Add conversation context instruction to help Jules maintain flow
+    if (recentMessages.length > 2) {
+      messages.unshift({ 
+        role: 'system', 
+        content: 'IMPORTANT: Maintain conversation context. If the user asks about a brand or product without specifying what they want, refer back to the previous conversation topic. For example, if we were talking about leather jackets and they ask "does uniqlo have anything?", they mean leather jackets from Uniqlo, not random workout clothes. Stay in the same topic unless they explicitly change subjects.'
+      });
+    }
+    
     // Dynamic token management based on conversation context
     let maxTokens;
     const messageCount = messages.length;
@@ -321,15 +367,15 @@ exports.handleChat = async (req, res) => {
     const isSimpleQuestion = /(hi|hello|hey|thanks|thank you|bye|goodbye|yes|no|ok|okay)/i.test(message);
     
     if (isSimpleQuestion) {
-      maxTokens = 1500; // Increased for simple interactions
+      maxTokens = 2000;
     } else if (isAdviceQuestion) {
-      maxTokens = 3000; // Reduced for complex advice to stay within limits
+      maxTokens = 3000;
     } else if (isProductRequestType) {
-      maxTokens = 2000; // Reduced for product recommendations
+      maxTokens = 2000;
     } else if (messageCount > 10) {
-      maxTokens = 3000; // Reduced for deep conversations
+      maxTokens = 3000;
     } else {
-      maxTokens = 2000; // Reduced for general conversation
+      maxTokens = 2000;
     }
     
     console.log(`DEBUG: Context-aware token limit - Message count: ${messageCount}, Type: ${isAdviceQuestion ? 'advice' : isProductRequestType ? 'product' : isSimpleQuestion ? 'simple' : 'general'}, Max tokens: ${maxTokens}`);
@@ -373,17 +419,42 @@ exports.handleChat = async (req, res) => {
         console.log('DEBUG: API Key exists:', !!apiKey);
         console.log('DEBUG: CSE ID exists:', !!cseId);
         
+        // First, try to extract brands from Jules's response that she just generated
+        const responseBrandMatch = reply.match(/(schott|allsaints|nike|adidas|levi|uniqlo|jcrew|ten thousand|lululemon)/i);
+        console.log('DEBUG: Response brand match:', responseBrandMatch);
+        
         // Use the actual user message for search, not extracted content - prioritize current request
         let searchQuery = message;
-        const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+        const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|schott|allsaints)/i);
         const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
         
-        if (brandMatch && productMatch) {
-          searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
-        } else if (brandMatch) {
-          searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+        console.log('DEBUG: Brand match:', brandMatch);
+        console.log('DEBUG: Product match:', productMatch);
+        
+        // Check for leather-specific requests
+        const isLeatherRequest = /leather/i.test(message);
+        
+        // Prioritize brands mentioned in Jules's response over user message
+        const finalBrandMatch = responseBrandMatch || brandMatch;
+        
+        if (finalBrandMatch && productMatch) {
+          if (isLeatherRequest) {
+            searchQuery = `${finalBrandMatch[0]} men's leather ${productMatch[0]} buy shop`;
+          } else {
+            searchQuery = `${finalBrandMatch[0]} men's ${productMatch[0]} buy shop`;
+          }
+        } else if (finalBrandMatch) {
+          if (isLeatherRequest) {
+            searchQuery = `${finalBrandMatch[0]} men's leather clothing buy shop`;
+          } else {
+            searchQuery = `${finalBrandMatch[0]} men's clothing buy shop`;
+          }
         } else if (productMatch) {
-          searchQuery = `men's ${productMatch[0]} buy shop`;
+          if (isLeatherRequest) {
+            searchQuery = `men's leather ${productMatch[0]} buy shop`;
+          } else {
+            searchQuery = `men's ${productMatch[0]} buy shop`;
+          }
         } else {
           // Use the original message with "men's" prefix for better results
           searchQuery = `men's ${message} buy shop`;
@@ -443,7 +514,7 @@ exports.handleChat = async (req, res) => {
       
       // Use the user's message directly for search - prioritize current request over conversation context
       let searchQuery = message;
-      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|schott|allsaints)/i);
       const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
       
       if (brandMatch && productMatch) {
