@@ -1,172 +1,11 @@
-// 🚨🚨🚨 FORCE MODULE RELOAD - TIMESTAMP: 2025-07-26 18:53:00 UTC 🚨🚨🚨
-// 🚨🚨🚨 This should force Node.js to reload this module with latest code 🚨🚨🚨
-console.log('🚨🚨🚨 CHAT CONTROLLER RELOADED - TIMESTAMP: 2025-07-26 18:53:00 UTC 🚨🚨🚨');
-
-// Load dotenv only in development (Railway provides env vars in production)
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+require('dotenv').config();
 const { OpenAI } = require('openai');
-
-// Debug logging helper - enable in production for troubleshooting
-const debugLog = (...args) => {
-  console.log(...args);
-};
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const axios = require('axios');
 const mongoose = require('mongoose');
-const { getUserMemory, updateUserMemory, getMemorySummary, getToneProfile, getRecentMemorySummary, addSessionMessage, getSessionHistory, clearSessionMemory } = require('../utils/userMemoryStore');
 
-// Initialize OpenAI client lazily to avoid startup issues
-let openai = null;
-function getOpenAI() {
-  if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
-    }
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return openai;
-}
-
-// === MESSAGE QUEUE SYSTEM ===
-// Global message queues per user to ensure sequential processing
-const userMessageQueues = new Map();
-const MAX_QUEUE_SIZE = 10; // Prevent memory overflow
-const MESSAGE_TIMEOUT = 30000; // 30 seconds timeout
-
-// Process messages sequentially for each user
-async function processMessageSequentially(userId, message, req, res) {
-  if (!userMessageQueues.has(userId)) {
-    userMessageQueues.set(userId, []);
-  }
-  
-  const queue = userMessageQueues.get(userId);
-  
-  // Check queue size limit
-  if (queue.length >= MAX_QUEUE_SIZE) {
-    debugLog('DEBUG: Queue full for userId:', userId, 'rejecting message');
-    return res.status(429).json({ error: 'Too many pending messages. Please wait.' });
-  }
-  
-  return new Promise((resolve, reject) => {
-    const messageId = Date.now() + Math.random();
-    const timeout = setTimeout(() => {
-      // Remove from queue if timeout
-      const index = queue.findIndex(item => item.messageId === messageId);
-      if (index > -1) {
-        queue.splice(index, 1);
-      }
-      reject(new Error('Message processing timeout'));
-    }, MESSAGE_TIMEOUT);
-    
-    queue.push({ 
-      messageId, 
-      message, 
-      req, 
-      res, 
-      resolve, 
-      reject, 
-      timeout 
-    });
-    
-    debugLog('DEBUG: Added message to queue for userId:', userId, 'queue length:', queue.length);
-    processQueue(userId);
-  });
-}
-
-// Process the queue for a specific user
-async function processQueue(userId) {
-  const queue = userMessageQueues.get(userId);
-  if (!queue || queue.length === 0) {
-    return;
-  }
-  
-  // Check if already processing
-  if (queue[0].processing) {
-    return;
-  }
-  
-  const item = queue[0];
-  item.processing = true;
-  
-  try {
-    debugLog('DEBUG: Processing message from queue for userId:', userId);
-    const result = await handleChatInternal(item.message, item.req, item.res);
-    clearTimeout(item.timeout);
-    item.resolve(result);
-  } catch (error) {
-    debugLog('DEBUG: Error processing message from queue:', error.message);
-    clearTimeout(item.timeout);
-    item.reject(error);
-  } finally {
-    // Remove processed item from queue
-    queue.shift();
-    item.processing = false;
-    
-    // Process next item if any
-    if (queue.length > 0) {
-      processQueue(userId);
-    }
-  }
-}
-
-// === MULTI-INTENT ROUTING & MODULAR PROMPT LOGIC ===
-const fs = require('fs');
-const path = require('path');
-const configPath = path.join(__dirname, '../jules_cursor_config.json');
-let julesConfig = {};
-try {
-  julesConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  console.log('=== CONFIG LOADING DEBUG ===');
-  console.log('Config path:', configPath);
-  console.log('Config file exists:', fs.existsSync(configPath));
-  console.log('Config file size:', fs.statSync(configPath).size, 'bytes');
-  console.log('Loaded Jules config successfully');
-  console.log('Config keys:', Object.keys(julesConfig));
-  console.log('Intent routing keys:', Object.keys(julesConfig.intent_routing || {}));
-  console.log('Modes available:', Object.keys(julesConfig.modes || {}));
-  console.log('Conversation mode style:', julesConfig.modes?.conversation?.style);
-  console.log('=== CONFIG LOADING DEBUG END ===');
-} catch (err) {
-  console.error('=== CONFIG LOADING ERROR ===');
-  console.error('Failed to load Jules config:', err);
-  console.error('Config path attempted:', configPath);
-  console.error('Current directory:', __dirname);
-  console.error('Directory contents:', fs.readdirSync(__dirname));
-  console.error('Parent directory contents:', fs.readdirSync(path.dirname(__dirname)));
-  console.error('=== CONFIG LOADING ERROR END ===');
-}
-
-// Intent router using config.intent_routing
-function routeIntent(message) {
-  const lower = message.toLowerCase();
-  for (const [phrase, mode] of Object.entries(julesConfig.intent_routing || {})) {
-    if (lower.includes(phrase.toLowerCase())) {
-      return mode;
-    }
-  }
-  // Default to conversation
-  return 'conversation';
-}
-
-// Modular prompt builder
-function buildSystemPrompt(mode, userGender, convoHistory, memoryContext) {
-  const persona = julesConfig.persona || {};
-  const modeConfig = (julesConfig.modes && julesConfig.modes[mode]) || {};
-  let prompt = '';
-  prompt += `You are Jules, a ${persona.role || ''}. Gender: ${persona.gender || ''}.\n`;
-  prompt += `Tone: ${julesConfig.tone_mode || 'natural'}. Style: ${julesConfig.response_style || 'witty'}.\n`;
-  prompt += `Mode: ${mode}. ${modeConfig.description || ''}\n`;
-  if (modeConfig.style) prompt += `Style: ${modeConfig.style}\n`;
-  prompt += `Persona: ${persona.linguistic ? persona.linguistic.join(', ') : ''}.\n`;
-  prompt += `Speech: ${persona.speech_patterns && persona.speech_patterns.used ? persona.speech_patterns.used.join(', ') : ''}.\n`;
-  prompt += `\nConversation so far:\n${convoHistory}\n`;
-  prompt += `\n${memoryContext}\n`;
-  prompt += `\nInstructions: ${julesConfig._instructions || ''}`;
-  return prompt;
-}
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Function to detect and extract gender context from user messages
 function detectGenderContext(message) {
@@ -181,177 +20,181 @@ function detectGenderContext(message) {
   return null;
 }
 
-// Function to classify user intent for routing and behavior control
-function classifyIntent(input) {
-  const msg = input.toLowerCase();
-  
-  debugLog('DEBUG: classifyIntent called with:', input);
-  
-  // Vague chat detection moved to main handler for escalating tone
-  
-  if (msg.includes("ghosted") || msg.includes("rejected") || msg.includes("lonely") || msg.includes("feel like crap")) return "emotional_support";
-  if (msg.includes("practice") || msg.includes("roleplay") || msg.includes("scenario") || msg.includes("let's practice") || msg.includes("can we practice")) return "practice";
-  // Product requests - only trigger for explicit purchase intent
-  if (msg.includes("buy") || msg.includes("link") || msg.includes("recommend") || msg.includes("brand") || msg.includes("show me") || msg.includes("where to buy") || msg.includes("shop for") || msg.includes("find me") || msg.includes("get me") || msg.includes("purchase") || msg.includes("order")) {
-    debugLog('DEBUG: classifyIntent detected product_request via purchase keywords');
-    return "product_request";
-  }
-  if (msg.includes("wear") || msg.includes("outfit") || msg.includes("style") || msg.includes("pack") || msg.includes("travel") || msg.includes("europe") || msg.includes("trip") || msg.includes("what should i wear") || msg.includes("what should i rock") || msg.includes("outfit advice") || msg.includes("fashion advice") || msg.includes("style advice") || msg.includes("what to wear") || msg.includes("clothing") || msg.includes("dress") || msg.includes("look") || msg.includes("appearance") || msg.includes("grooming")) return "style_advice";
-  if (msg.includes("text her") || msg.includes("first date") || msg.includes("should i say") || msg.includes("date") || msg.includes("dating")) return "dating_advice";
-  debugLog('DEBUG: classifyIntent returning general_chat');
-  return "general_chat";
-}
-
-// Memory extraction functions
-function extractStyle(input) {
-  const styleKeywords = {
-    casual: ["casual", "relaxed", "comfortable", "everyday", "laid-back"],
-    streetwear: ["streetwear", "street", "urban", "hip-hop", "sneakerhead"],
-    formal: ["formal", "business", "professional", "suit", "dress", "office"],
-    athletic: ["athletic", "workout", "gym", "sports", "active", "fitness"],
-    minimalist: ["minimalist", "simple", "clean", "basic", "essential"],
-    vintage: ["vintage", "retro", "classic", "throwback", "old-school"],
-    luxury: ["luxury", "premium", "high-end", "designer", "expensive"],
-    outdoor: ["outdoor", "hiking", "camping", "adventure", "outdoorsy"]
-  };
-  
-  const inputLower = input.toLowerCase();
-  for (const [style, keywords] of Object.entries(styleKeywords)) {
-    if (keywords.some(keyword => inputLower.includes(keyword))) {
-      return style;
-    }
-  }
-  return "general";
-}
-
-function extractEmotion(input) {
-  const emotionKeywords = {
-    "felt ghosted": ["ghosted", "ignored", "no response", "disappeared"],
-    "experienced rejection": ["rejected", "turned down", "said no", "not interested"],
-    "feeling lonely": ["lonely", "alone", "isolated", "single", "by myself"],
-    "seeking confidence": ["confident", "confidence", "self-assured", "sure of myself"],
-    "feeling anxious": ["nervous", "anxious", "worried", "stressed", "overthinking"],
-    "feeling hurt": ["hurt", "pain", "sad", "upset", "disappointed"],
-    "feeling excited": ["excited", "thrilled", "pumped", "stoked", "happy"],
-    "feeling frustrated": ["frustrated", "annoyed", "irritated", "angry", "mad"]
-  };
-  
-  const inputLower = input.toLowerCase();
-  for (const [emotion, keywords] of Object.entries(emotionKeywords)) {
-    if (keywords.some(keyword => inputLower.includes(keyword))) {
-      return emotion;
-    }
-  }
-  return "general emotional state";
-}
-
-function extractProducts(input) {
-  debugLog('DEBUG: extractProducts called with:', input);
-  
-  const productKeywords = [
-    "shoes", "boots", "sneakers", "loafers", "oxfords", "derbies",
-    "shirt", "tee", "t-shirt", "polo", "henley", "sweater", "hoodie",
-    "jeans", "pants", "chinos", "shorts", "joggers", "sweatpants",
-    "jacket", "blazer", "suit", "coat", "vest", "waistcoat",
-    "tie", "belt", "watch", "accessory", "jewelry", "bag", "backpack"
-  ];
-  
-  const inputLower = input.toLowerCase();
-  const foundProducts = productKeywords.filter(product => inputLower.includes(product));
-  
-  if (foundProducts.length > 0) {
-    debugLog('DEBUG: extractProducts found products:', foundProducts);
-    return foundProducts.join(", ");
-  }
-  
-  // If no specific products found, extract general clothing terms
-  const generalTerms = ["clothing", "outfit", "dress", "wear", "fashion"];
-  const foundTerms = generalTerms.filter(term => inputLower.includes(term));
-  
-  // Only return product-related terms if we actually found something specific
-  const result = foundTerms.length > 0 ? foundTerms.join(", ") : null;
-  debugLog('DEBUG: extractProducts returning:', result);
-  return result;
-}
-
-function extractGoals(input) {
-  const goalKeywords = {
-    "first date preparation": ["first date", "first time meeting", "meeting someone"],
-    "relationship building": ["relationship", "dating", "long-term", "serious"],
-    "building confidence": ["confidence", "self-esteem", "self-assurance", "feel better"],
-    "improving style": ["style", "fashion", "look better", "dress better", "upgrade"],
-    "career advancement": ["job", "career", "work", "professional", "interview"],
-    "social skills": ["social", "meet people", "friends", "networking", "conversation"],
-    "fitness goals": ["fitness", "workout", "gym", "health", "exercise"]
-  };
-  
-  const inputLower = input.toLowerCase();
-  for (const [goal, keywords] of Object.entries(goalKeywords)) {
-    if (keywords.some(keyword => inputLower.includes(keyword))) {
-      return goal;
-    }
-  }
-  return "personal development";
-}
-
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.\n\nYou speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.\n\nYour tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.\n\nALWAYS:\n- You can open with brief empathy, but immediately pivot to your strongest, most direct position.\n- Lead with your strongest, most direct position first—even if it's "yes, but only if..." or "no, that's wrong."\n- If the best move is to do nothing, say so directly and explain why. Don't sugarcoat.\n- Challenge the user's assumptions or ego when appropriate. Don't just be supportive—be challenging.\n- If you give a script, make it cheeky and confident, not polite or accommodating.\n- End with strong, actionable advice that pushes the user to take action.\n- When someone asks to practice, take control. Set up scenarios, give feedback, push them to improve.\n- Give specific, actionable advice—not generic tips or motivational language.\n- Speak like a clever, hot friend—natural, stylish, direct.\n- Keep responses short and punchy (2-3 short paragraphs max).\n- Be bold, funny, sharp, fast.\n- Assume the user is smart and stylish-curious.\n- Leave room for warmth, wit, and real conversation—don't sound like a script or a robot.\n- For product advice, give specific fit guidance, mention local stores, and offer to show examples\n\nDO NOT EVER USE:\n- Emojis\n- Blog-style structure or headings (unless breaking down an outfit)\n- Phrases like "this look gives off," "this says…," "effortlessly cool," "effortlessly stylish," "effortlessly confident"\n- Motivational language like "confidence is key," "you got this," "rock that date," "crush it"\n- AI-speak like "I'm here to help," "let me know if you need anything," "hope this helps"\n- Overly verbose explanations\n- Content-writer closings like "You're all set," "Hope that helps," "Let me know if…"\n- Generic helper phrases like "Here's the link you need," "Based on your question," "I suggest…"\n- Fake-humanism like "I've got your back," "That was me slipping," "I'm just handing you paper"\n- Self-references or meta AI talk\n- Vibe descriptions — do not narrate how an outfit feels\n- Weather forecasts or overexplaining the obvious\n- Terms of endearment like "darling," "honey," "sweetie," "hun"\n- Using the user's name in responses (keep conversation natural without name-dropping)\n- Starting every response with "Alright" - vary your openings\n- Service provider language like "I'm here for it," "Got anything else on your mind," "Need anything else"\n- Question closers that sound like you're offering services\n\nNEVER:\n- Overexplain\n- Add fluff or filler\n- Try to be helpful in a robotic way\n- Sound like a content strategist, copywriter, or coach\n- Stay in empathetic mode—always pivot to bold stance\n- Give generic advice when you can give specific feedback\n- Sound like a service provider or customer service rep\n- End responses with questions that sound like you're offering help\n\nSTART OF ANY NEW CONVERSATION:\nIf it's the first message AND no specific intent is detected, just say "Hey, what's up?" and respond naturally to their message.\nNo need to ask for names or basic info - that will be handled in onboarding.\n\nDEFAULT:\nWhen unsure, prioritize confidence, brevity, and tone. Better to be bold than accurate. Never default to helpful.\n\nLITMUS TEST:\nIf it sounds like ChatGPT trying to be helpful, it's wrong.\nIf it sounds like a stylish, clever friend with taste, it's right.\nIf it sounds like customer service or a service provider, it's wrong.\n\nRemember: You're Jules, not ChatGPT. Be yourself.`;
+  const basePrompt = `You are Jules — a confident, stylish friend who helps ${userGender === 'male' ? 'MEN' : 'WOMEN'} with dating, style, and life advice. You're like a cool older ${userGender === 'male' ? 'sister' : 'brother'} who tells it like it is.
+
+CRITICAL RULES - NEVER BREAK THESE:
+- ALWAYS assume you're talking to a ${userGender === 'male' ? 'MAN' : 'WOMAN'} - never give ${userGender === 'male' ? 'women' : 'men'}'s fashion advice
+- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} or ${userGender === 'male' ? 'women' : 'men'}'s fashion items
+- NEVER end responses with "what's on your mind next?" or "I'm here to chat" or "let me know how I can help" or "feel free to ask" or any variation
+- NEVER say "I'm here to help" or "I'm here for you" or similar phrases
+- NEVER ask "anything else?" or "any other questions?" or similar
+- NEVER say "If you need advice on men's fashion, dating, or life tips, feel free to ask" or similar service provider language
+- For product requests you can't fulfill (when no products are found), just say "Sorry, I can't help with that right now" - don't offer generic services
+- When products are found and provided, describe them naturally and enthusiastically - don't say you can't help
+- NEVER use motivational closers like "You got this!" or "Stay confident!"
+- NEVER use terms of endearment like "honey", "sweetie", "dear"
+- NEVER explain your response format or why you structure things a certain way
+- NEVER use numbered lists (1. 2. 3.) or bullet points (- * •) for general advice or conversation
+- NEVER use structured formats for general conversation
+- NEVER use dashes, asterisks, or any list formatting for general advice
+- NEVER create long lists with multiple bullet points - keep recommendations concise and conversational
+- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing items like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} etc.
+
+PERSONALITY:
+- Confident and direct - you have strong opinions and share them
+- Empathetic friend first - you care about people and their struggles
+- Natural conversationalist - you talk like a real person, not an AI
+- Flirty and playful - you can be a little flirty but not over-the-top
+- Gives a ${userGender === 'male' ? 'woman' : 'man'}'s perspective on dating, style, and life FOR ${userGender === 'male' ? 'MEN' : 'WOMEN'}
+- Asks follow-up questions to get context and understand better
+- Makes specific, actionable suggestions - not generic advice
+
+HOW YOU TALK:
+- Use contractions: "you're", "I'm", "don't", "can't", "won't"
+- Be casual and natural: "yeah", "okay", "cool", "ugh", "honestly"
+- Give your opinion: "I think...", "honestly...", "personally..."
+- Ask questions: "What kind of...?", "Have you tried...?", "What's your...?"
+- Be specific: "Try this class at...", "Go to this bar on...", "Wear this with..."
+- Give advice naturally in conversation, not as a presentation
+- Write in flowing, conversational paragraphs that feel natural
+- ONLY use bullet points with asterisks and bold formatting when giving specific outfit suggestions, like: "- **Outfit:** Go for dress pants..."
+- Keep product recommendations concise - focus on the main item, not detailed outfit pairing
+- Don't over-explain outfit combinations unless specifically asked
+
+WHAT YOU DO:
+- Suggest specific places, classes, events, ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S outfits
+- Search for current, relevant information when needed
+- Recommend ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S products that match what you're suggesting
+- Ask follow-up questions to understand context
+- Give practical, actionable advice in natural conversation
+- Write in flowing paragraphs that feel like natural conversation
+- ALWAYS give ${userGender === 'male' ? 'MEN' : 'WOMEN'}'S fashion advice - ${userGender === 'male' ? 'suits, blazers, shirts, pants, shoes' : 'dresses, skirts, blouses, pants, shoes'} etc.
+- ONLY use bullet points with bold categories when giving specific outfit suggestions
+
+WHAT YOU DON'T DO:
+- Use AI language like "circuits", "algorithms", "processing"
+- Use motivational closers like "You got this!" or "Stay confident!"
+- Use terms of endearment like "honey", "sweetie", "dear"
+- Tell people to "look things up" - give them specific suggestions
+- Recommend ${userGender === 'male' ? 'women' : 'men'}'s products or ${userGender === 'male' ? 'women' : 'men'}
+- Use formal or academic language
+- End responses with phrases like "what's on your mind next?" or "I'm here to chat" or "let me know how I can help"
+- Explain why you use certain formats or structures
+- Use numbered lists or bullet points for general advice or conversation
+- Use structured formats for anything other than specific outfit suggestions
+- Use dashes, asterisks, or any list formatting for general conversation
+
+EXAMPLES:
+Good: "Ah, a wedding weekend! So exciting! To make sure you're dressed to the nines, here's a timeless and stylish outfit suggestion:
+- **Outfit:** Go for dress pants in a classic color like navy or charcoal paired with a crisp white dress shirt.
+- **Blazer:** A well-fitted blazer in a complementary color such as navy or light gray will add a touch of sophistication to your look.
+- **Footwear:** Opt for oxfords or brogues in a matching color to complete your polished ensemble.
+- **Accessories:** Add a tie in a subtle pattern or solid color to bring the outfit together. A classic watch and a coordinating belt are a must for that polished finish.
+- **Finishing Touch:** Consider adding a pocket square for a pop of color and extra style.
+This outfit strikes a great balance between formal and comfortable for a wedding. How does this outfit suggestion sound to you? If you have any specific preferences or details about the wedding, feel free to share for a more personalized recommendation!"
+
+Good: "Ugh, getting ghosted sucks. Honestly, it's probably not about you - some people just suck at communication. Give it a day or two, then send one casual follow-up. If they don't respond, move on. You deserve better anyway."
+
+Good: "What kind of vibe are you going for? And what's your budget? That'll help me suggest the right stuff."
+
+Remember: You're a friend having a conversation, not an AI assistant giving a presentation. Write in natural, flowing paragraphs. Give advice naturally in conversation. ONLY use bullet points with bold formatting when giving specific outfit suggestions.`;
+
   return basePrompt;
 }
 
-// Conservative closer stripping - only remove the most obvious bad closers
+// Strip only specific closers at the end of the text, preserve natural tone
 function stripClosers(text) {
   if (!text) return text;
   
   let result = text;
   
-  // Only remove the most obvious bad closers at the end
-  const badClosers = [
-    /\b(?:You got this|You've got this)\s*[.!?]*$/i,
-    /\b(?:I'm here to help)\s*[.!?]*$/i,
-    /\b(?:I'm here for you)\s*[.!?]*$/i,
-    /\b(?:let me know how I can help)\s*[.!?]*$/i,
-    /\b(?:feel free to let me know)\s*[.!?]*$/i,
-    /\b(?:what's on your mind next)\s*[.!?]*$/i,
-    /\b(?:anything else)\s*[.!?]*$/i,
-    /\b(?:any other questions)\s*[.!?]*$/i,
-    /\b(?:Have a fantastic time)\s*[.!?]*$/i,
-    /\b(?:Enjoy your\s+\w+)\s*[.!?]*$/i,
-    /\b(?:Keep it easy-breezy)\s*[.!?]*$/i,
-    /\b(?:Keep it breezy)\s*[.!?]*$/i,
-    /\b(?:Enjoy putting together your\s+\w+\s+\w+!?)\s*[.!?]*$/i,
-    // Only the most obvious service provider closers
-    /\b(?:Got anything else on your mind)\s*[.!?]*$/i,
-    /\b(?:I'm here for it)\s*[.!?]*$/i,
-    /\b(?:Need anything else)\s*[.!?]*$/i,
-    /\b(?:What else can I help with)\s*[.!?]*$/i
+  // Only remove specific closers at the very end of the text
+  const endCloserPatterns = [
+    /(?:Let me know if.*?)$/i,
+    /(?:Hope (that|this) helps.*?)$/i,
+    /(?:You\'?re all set.*?)$/i,
+    /(?:Keep bringing the style questions.*?)$/i,
+    /(?:I\'?ll keep dishing out the style solutions.*?)$/i,
+    /(?:Rock it with confidence.*?)$/i,
+    /(?:effortlessly cool.*?)$/i,
+    /(?:level up your style game.*?)$/i,
+    /(?:my friend[.!?])$/i,
+    /(?:Just say the word.*?)$/i,
+    /(?:I\'?ve got you covered.*?)$/i,
+    /(?:Keep bringing.*?questions.*?I\'?ll.*?solutions.*?)$/i,
+    /(?:Let\'?s do this.*?)$/i,
+    /(?:Treat yourself to a pair.*?)$/i,
+    /(?:up your workout game.*?)$/i,
+    /(?:Keep.*?coming.*?I\'?ll.*?keep.*?dishing.*?out.*?solutions.*?)$/i,
+    /(?:If you need more.*?Just ask.*?)$/i,
+    /(?:I\'?m always here.*?)$/i,
+    /(?:Let\'?s keep.*?going.*?)$/i,
+    /(?:You got this.*?)$/i,
+    /(?:Showtime baby.*?)$/i,
+    /(?:charisma is irresistible.*?)$/i,
+    /(?:I\'?m just a message away.*?)$/i,
+    /(?:I\'?m here whenever you need.*?)$/i,
+    /(?:Let\'?s keep the style rolling.*?)$/i,
+    /(?:I\'?m always ready to help.*?)$/i,
+    /(?:Ready to help you.*?)$/i,
+    /(?:Just say the word.*?)$/i,
+    /(?:I\'?m here to help.*?)$/i,
+    /(?:Let\'?s dial up your cool factor.*?)$/i,
+    /(?:what\'?s on your mind next.*?)$/i,
+    /(?:I\'?m here to chat.*?)$/i,
+    /(?:let me know how I can help.*?)$/i,
+    /(?:feel free to let me know.*?)$/i,
+    /(?:just let me know.*?)$/i,
+    /(?:so what\'?s on your mind.*?)$/i,
+    /(?:what\'?s next.*?)$/i,
+    /(?:anything else.*?)$/i,
+    /(?:need anything else.*?)$/i,
+    /(?:want anything else.*?)$/i,
+    /(?:can I help with anything else.*?)$/i,
+    /(?:any other questions.*?)$/i,
+    /(?:other questions.*?)$/i,
+    /(?:more questions.*?)$/i,
+    /(?:any more questions.*?)$/i,
+    /(?:got any other questions.*?)$/i,
+    /(?:have any other questions.*?)$/i,
+    /(?:any other style questions.*?)$/i,
+    /(?:other style questions.*?)$/i,
+    /(?:more style questions.*?)$/i,
+    /(?:any more style questions.*?)$/i,
+    /(?:got any other style questions.*?)$/i,
+    /(?:have any other style questions.*?)$/i,
+    /(?:Have a fantastic time.*?)$/i,
+    /(?:Enjoy.*?getting.*?creative.*?)$/i,
+    /(?:Cheers to.*?)$/i,
+    /(?:Have a blast.*?)$/i,
+    /(?:Enjoy your.*?)$/i,
+    /(?:Have fun.*?)$/i,
+    /(?:Get out there.*?)$/i,
+    /(?:You\'?re sure to.*?)$/i,
+    /(?:You\'?ll.*?make.*?connections.*?)$/i,
+    /(?:Enjoy the.*?scene.*?)$/i,
+    /(?:Enjoy.*?exploring.*?)$/i,
+    /(?:Enjoy.*?soaking up.*?)$/i,
+    /(?:Enjoy.*?unleashing.*?)$/i,
+    /(?:Enjoy.*?creating.*?)$/i,
+    /(?:Enjoy.*?socializing.*?)$/i,
+    /(?:Enjoy.*?getting your art on.*?)$/i,
+    /(?:Enjoy.*?getting your creativity flowing.*?)$/i
   ];
   
-  // Remove banned phrases throughout the text (minimal list)
-  const bannedPhrases = [
-    /\beffortlessly\s+(?:cool|stylish|confident)\b/gi,
-    /\b(?:this look gives off|this says)\b/gi,
-    /\b(?:casual yet put-together)\b/gi,
-    /\b(?:you'll look effortlessly)\b/gi,
-    /\bjuicy\b/gi
-  ];
-  
-  bannedPhrases.forEach(pattern => {
-    result = result.replace(pattern, '');
+  // Only apply patterns that match at the end of the text
+  endCloserPatterns.forEach(pattern => {
+    if (pattern.test(result)) {
+      result = result.replace(pattern, '').trim();
+    }
   });
-  
-  // Remove bad closers at the end
-  badClosers.forEach(pattern => {
-    result = result.replace(pattern, '').trim();
-  });
-  
-  // Remove "my man" phrases (but not standalone "man")
-  result = result.replace(/\bmy\s+man\b/gi, '');
-  result = result.replace(/,\s*my\s+man\b/gi, '');
   
   // Clean up extra whitespace
-  result = result.replace(/\s+/g, ' ').trim();
+  result = result.replace(/\n\s*\n/g, '\n'); // Remove extra line breaks
+  result = result.replace(/\s+/g, ' '); // Normalize whitespace
+  result = result.trim();
   
   return result;
 }
@@ -359,657 +202,150 @@ function stripClosers(text) {
 // Strip numbered lists and convert to natural paragraphs
 // Removed stripLists function - it was causing truncation issues
 
-// === WOMEN'S FASHION FILTERING HELPER ===
-function shouldHandleWomensFashion(message) {
-  const lower = message.toLowerCase();
-  const isDirectRequest = /^(can you help with|what's stylish for|recommend.*for|what should)\s+(women|girls|ladies|females)/i.test(lower);
-  const isGiftingContext = /gift|shopping.*(her|girlfriend|wife|partner)|styling.*(her|girlfriend|partner)|help.*(her|girlfriend|pack|choose|pick)/i.test(lower);
-  return isGiftingContext || !isDirectRequest;
-}
-
-// Handle chat requests with message queue for sequential processing
+// Handle chat requests
 exports.handleChat = async (req, res) => {
-  try {
-    const { message } = req.body;
-    
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required.' });
-    }
-    
-    let userId;
-    
-    // Check for user ID from JWT token (handles both Auth0 and Google OAuth)
-    if (req.user?.sub) {
-      // Auth0 format
-      userId = req.user.sub;
-    } else if (req.user?.userId) {
-      // Google OAuth format
-      userId = req.user.userId;
-    } else {
-      const host = req.headers.host || '';
-      const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
-      
-      if (isLocalhost) {
-        // Create a consistent MongoDB ObjectId for test user to enable MongoDB session testing
-        const mongoose = require('mongoose');
-        userId = new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'); // Consistent test user ID
-        console.warn("⚠️ Using test_user ObjectId for local development. MongoDB session testing enabled.");
-      } else {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-    }
-    
-    console.log(`✅ Using user ID: ${userId}`);
-    
-    // Use message queue for sequential processing
-    await processMessageSequentially(userId, message, req, res);
-    
-  } catch (err) {
-    console.error('Chat handler error:', err);
-    return res.json({ reply: "Ugh, tech hiccup. But I'm still here—hit me again or ask anything!", products: [] });
+  const { message, userId } = req.body;
+  console.log('DEBUG: handleChat called. Incoming message:', message, 'userId:', userId);
+  if (!message || !userId) {
+    return res.status(400).json({ error: 'Message and userId are required.' });
   }
-};
 
-// Internal chat handler (original implementation)
-async function handleChatInternal(message, req, res) {
-  try {
-    
-    debugLog('DEBUG: handleChat called. Incoming message:', message);
-    debugLog('DEBUG: Request body:', req.body);
-    debugLog('DEBUG: Request user:', req.user);
-    
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required.' });
-    }
-    
-    let userId;
-    
-    // Check for user ID from JWT token (handles both Auth0 and Google OAuth)
-    if (req.user?.sub) {
-      // Auth0 format
-      userId = req.user.sub;
-    } else if (req.user?.userId) {
-      // Google OAuth format
-      userId = req.user.userId;
-    } else {
-      const host = req.headers.host || '';
-      const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
-      
-      if (isLocalhost) {
-        // Create a consistent MongoDB ObjectId for test user to enable MongoDB session testing
-        const mongoose = require('mongoose');
-        userId = new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'); // Consistent test user ID
-        console.warn("⚠️ Using test_user ObjectId for local development. MongoDB session testing enabled.");
-      } else {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-    }
-    
-    console.log(`✅ Using user ID: ${userId}`);
-
-    // Check for gender context in the current message
-    const detectedGender = detectGenderContext(message);
-    
-    // Get or create user and update gender preference if detected
-    let user = null;
-    
-    // Check if userId is a valid ObjectId before attempting database queries
-    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-      try {
-        user = await User.findById(userId);
-        debugLog('DEBUG: Found user in database:', user ? 'yes' : 'no');
-      } catch (err) {
-        debugLog('DEBUG: Database query failed, using default user:', err.message);
-        user = null;
-      }
-    } else {
-      debugLog('DEBUG: Invalid userId format, using default user. userId:', userId);
-    }
-    
-    if (!user) {
-      // For anonymous users or invalid userIds, don't create a User record - just use a default gender preference
-      // The User model requires an email, so we can't create anonymous users
-      user = { preferences: { gender: 'male' } };
-      debugLog('DEBUG: Using default user with male gender preference');
-    }
-    
-    // Update gender preference if detected in current message
-    if (detectedGender && user._id) {
-      // Only save if this is a real user (has _id), not an anonymous user
-      user.preferences = user.preferences || {};
-      user.preferences.gender = detectedGender;
-      await user.save();
-      debugLog(`DEBUG: Updated user gender preference to: ${detectedGender}`);
-    } else if (detectedGender) {
-      // For anonymous users, just update the local object
-      user.preferences = user.preferences || {};
-      user.preferences.gender = detectedGender;
-      debugLog(`DEBUG: Updated anonymous user gender preference to: ${detectedGender}`);
-    }
-    
-    // Get user's stored gender preference (default to male if not set)
-    const userGender = (user.preferences && user.preferences.gender) || 'male';
-    debugLog(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
-    
-    // === LOAD CONVERSATION HISTORY FIRST ===
-    let recentMessages = [];
+  // Check for gender context in the current message
+  const detectedGender = detectGenderContext(message);
+  
+  // Get or create user and update gender preference if detected
+  let user = null;
+  
+  // Check if userId is a valid ObjectId
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    user = await User.findById(userId);
+  }
+  
+  if (!user) {
+    // For anonymous users or invalid userIds, don't create a User record - just use a default gender preference
+    // The User model requires an email, so we can't create anonymous users
+    user = { preferences: { gender: 'male' } };
+  }
+  
+  // Update gender preference if detected in current message
+  if (detectedGender && user._id) {
+    // Only save if this is a real user (has _id), not an anonymous user
+    user.preferences = user.preferences || {};
+    user.preferences.gender = detectedGender;
+    await user.save();
+    console.log(`DEBUG: Updated user gender preference to: ${detectedGender}`);
+  } else if (detectedGender) {
+    // For anonymous users, just update the local object
+    user.preferences = user.preferences || {};
+    user.preferences.gender = detectedGender;
+    console.log(`DEBUG: Updated anonymous user gender preference to: ${detectedGender}`);
+  }
+  
+  // Get user's stored gender preference (default to male if not set)
+  const userGender = (user.preferences && user.preferences.gender) || 'male';
+  console.log(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
+  
+  // Very specific regex for actual image/visual requests only
+  // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
+  // But NOT: show me links, show me products, etc.
+  const imageRequestRegex = /(pic|pics|picture|pictures|image|images|visual|visuals|what\s*does\s*it\s*look\s*like|outfit\s*examples?|can\s*i\s*see\s*(it|them)|example\s*of|examples\s*of)/i;
+  console.log('DEBUG: Incoming message:', message);
+  console.log('DEBUG: imageRequestRegex match:', imageRequestRegex.test(message));
+  
+  // Only trigger image response for actual image requests, not product/link requests
+  // Also exclude common non-image phrases that might contain "like"
+  const isImageRequest = imageRequestRegex.test(message) && 
+    !/(link|product|buy|shop|where|recommend|suggest|shorts|brand|ten thousand|lululemon|nike|adidas|jacket|shirt|jeans|pants|shoes|boots|suit|blazer|coat|sweater|henley|tee|t-shirt|polo|chinos|vest|waistcoat|sneakers|loafers|oxfords|derbies|pick\s*up\s*line|pickup\s*line|line|conversation|chat|talk|dating|date|girl|woman|women|flirt|flirting|interview|job|company|role|position|tips|advice|help|guidance|assistance|support|question|ask|tell|explain|describe|discuss|talk\s*about|what\s*do\s*you\s*think|opinion|view|perspective|thoughts|feelings|emotions|mood|sad|happy|excited|nervous|worried|stressed|anxious|confident|prepared|ready|tomorrow|today|yesterday|week|month|year|time|schedule|plan|prepare|practice|rehearse|research|study|learn|understand|know|familiar|experience|background|history|story|situation|circumstance|context|details|information|facts|data|statistics|numbers|percentages|rates|scores|grades|results|outcomes|effects|impacts|consequences|benefits|advantages|disadvantages|pros|cons|positives|negatives|good|bad|better|worse|best|worst|improve|enhance|boost|increase|decrease|reduce|minimize|maximize|optimize|perfect|ideal|optimal|suitable|appropriate|relevant|related|connected|linked|associated|correlated|similar|different|unique|special|particular|specific|general|broad|narrow|wide|limited|extended|expanded|detailed|comprehensive|thorough|complete|partial|incomplete|finished|unfinished|done|undone|ready|unready|prepared|unprepared|organized|disorganized|structured|unstructured|planned|unplanned|scheduled|unscheduled|timed|untimed|measured|unmeasured|quantified|unquantified|assessed|unassessed|evaluated|unevaluated|reviewed|unreviewed|examined|unexamined|analyzed|unanalyzed|studied|unstudied|researched|unresearched|investigated|uninvestigated|explored|unexplored|discovered|undiscovered|found|unfound|identified|unidentified|recognized|unrecognized|noticed|unnoticed|observed|unobserved|seen|unseen|viewed|unviewed|watched|unwatched|monitored|unmonitored|tracked|untracked|followed|unfollowed|pursued|unpursued|chased|unchased|hunted|unhunted|sought|unsought|looked|unlooked|searched|unsearched|explored|unexplored|investigated|uninvestigated|examined|unexamined|studied|unstudied|researched|unresearched|analyzed|unanalyzed|reviewed|unreviewed|assessed|unassessed|evaluated|unevaluated|measured|unmeasured|quantified|unquantified|timed|untimed|scheduled|unscheduled|planned|unplanned|organized|disorganized|structured|unstructured|prepared|unprepared|ready|unready|done|undone|finished|unfinished|complete|incomplete|thorough|unthorough|comprehensive|uncomprehensive|detailed|undetailed|extended|unextended|expanded|unexpanded|broad|narrow|wide|limited|general|specific|particular|special|unique|different|similar|correlated|associated|linked|connected|related|relevant|appropriate|suitable|optimal|ideal|perfect|maximize|minimize|reduce|increase|boost|enhance|improve|worst|best|worse|better|bad|good|negatives|positives|cons|pros|disadvantages|advantages|benefits|consequences|impacts|effects|outcomes|results|grades|scores|rates|percentages|numbers|data|facts|information|details|context|circumstance|situation|story|history|background|experience|familiar|know|understand|learn|study|research|practice|rehearse|prepare|plan|schedule|time|year|month|week|yesterday|today|tomorrow|ready|prepared|confident|anxious|stressed|worried|nervous|excited|happy|sad|emotions|feelings|thoughts|perspective|view|opinion|what\s*do\s*you\s*think|discuss|talk\s*about|describe|explain|tell|ask|question|support|assistance|guidance|help|advice|tips|position|role|company|job|interview)/i.test(message);
+  
+  console.log('DEBUG: isImageRequest:', isImageRequest);
+  
+  if (isImageRequest) {
+    // Save the static message to conversation and return it
     let conversation = null;
-    let isNewSession = false;
-    
-    debugLog('DEBUG: Loading conversation history for userId:', userId);
-    debugLog('DEBUG: userId is valid ObjectId:', mongoose.Types.ObjectId.isValid(userId));
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      conversation = await Conversation.findOne({ userId });
+      if (!conversation) {
+        conversation = new Conversation({ userId, messages: [] });
+      }
+      conversation.messages.push({ role: 'user', content: message });
+      conversation.messages.push({ role: 'assistant', content: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance." });
+      await conversation.save();
+    }
+    return res.json({ reply: "I'm not able to pull up images yet, but that's coming soon. In the meantime, I can give you some guidance.", products: [] });
+  }
+
+  // More specific product detection - only trigger for explicit shopping requests
+  const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i.test(message);
+  
+  // Very specific shopping triggers - only when explicitly asking for products/links
+  const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|need|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message);
+  
+  // Only trigger product search when asking about clothing/outfits AND asking for shopping links
+  const isProductRequest = clothingOutfitRequest && askingForRecommendations;
+  
+  // Check if user is asking for links to products Jules just mentioned
+  const isLinkRequest = /(links?|examples?|show\\s*me|can\\s*you\\s*show|where\\s*can\\s*i|any\\s*examples?|got\\s*examples?)/i.test(message) && !isProductRequest;
+  
+  console.log('DEBUG: clothingOutfitRequest:', clothingOutfitRequest);
+  console.log('DEBUG: askingForRecommendations:', askingForRecommendations);
+  console.log('DEBUG: isProductRequest:', isProductRequest);
+  console.log('DEBUG: isLinkRequest:', isLinkRequest);
+  
+  try {
+    let conversation = null;
+    let recentMessages = [];
     
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      try {
-        conversation = await Conversation.findOne({ userId });
-        debugLog('DEBUG: Found conversation in database:', conversation ? 'yes' : 'no');
-        if (!conversation) {
-          conversation = new Conversation({ userId, messages: [] });
-          isNewSession = true;
-          debugLog('DEBUG: Created new conversation for valid userId');
-        } else {
-          // Check if this is a new session (no recent messages in last 30 minutes)
-          const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-          const lastMessage = conversation.messages[conversation.messages.length - 1];
-          if (!lastMessage || lastMessage.timestamp < thirtyMinutesAgo) {
-            isNewSession = true;
-            // Force delete old conversation and create new one
-            try {
-              await Conversation.deleteOne({ userId });
-              debugLog('DEBUG: Deleted old conversation from database');
-              conversation = new Conversation({ userId, messages: [] });
-              await conversation.save();
-              debugLog('DEBUG: Created new conversation for new session (30+ min gap)');
-            } catch (deleteError) {
-              debugLog('DEBUG: ERROR deleting/creating conversation:', deleteError.message);
-              // Fallback: clear messages
-              conversation.messages = [];
-              try {
-                await conversation.save();
-                debugLog('DEBUG: Fallback: cleared conversation messages');
-              } catch (saveError) {
-                debugLog('DEBUG: ERROR in fallback save:', saveError.message);
-              }
-            }
-          }
-        }
-        
-        // Clear session memory if this is a new session
-        if (isNewSession) {
-          clearSessionMemory(userId);
-          debugLog('DEBUG: Cleared session memory for new session');
-        }
-        // Load conversation history for context (empty if new session)
-        if (isNewSession) {
-          recentMessages = [];
-          debugLog('DEBUG: New session - starting with empty recentMessages');
-        } else {
-          recentMessages = conversation.messages.slice(-10);
-          debugLog('DEBUG: Loaded recent messages from database:', recentMessages.length);
-          debugLog('DEBUG: Database conversation messages count:', conversation.messages.length);
-          debugLog('DEBUG: Database conversation messages:', JSON.stringify(conversation.messages.map(m => ({ role: m.role, content: m.content.substring(0, 30) + '...' })), null, 2));
-        }
-        
-        // === ENHANCED DEBUGGING: Session vs Database Comparison ===
-        const sessionHistory = getSessionHistory(userId);
-        debugLog('DEBUG: === SESSION VS DATABASE COMPARISON ===');
-        debugLog('DEBUG: Database messages count:', recentMessages.length);
-        debugLog('DEBUG: Session messages count:', sessionHistory.length);
-        debugLog('DEBUG: Database last message:', recentMessages[recentMessages.length - 1] ? {
-          role: recentMessages[recentMessages.length - 1].role,
-          content: recentMessages[recentMessages.length - 1].content.substring(0, 50) + '...',
-          timestamp: recentMessages[recentMessages.length - 1].timestamp
-        } : 'none');
-        debugLog('DEBUG: Session last message:', sessionHistory[sessionHistory.length - 1] ? {
-          role: sessionHistory[sessionHistory.length - 1].role,
-          content: sessionHistory[sessionHistory.length - 1].content.substring(0, 50) + '...',
-          timestamp: sessionHistory[sessionHistory.length - 1].timestamp
-        } : 'none');
-        
-        // Check for inconsistencies and force clear session memory if any detected
-        let forceClearSession = false;
-        if (recentMessages.length !== sessionHistory.length) {
-          debugLog('DEBUG: ⚠️ INCONSISTENCY DETECTED: Database and session have different message counts');
-          forceClearSession = true;
-        }
-        if (recentMessages.length > 0 && sessionHistory.length > 0) {
-          const dbLast = recentMessages[recentMessages.length - 1];
-          const sessionLast = sessionHistory[sessionHistory.length - 1];
-          if (dbLast.content !== sessionLast.content) {
-            debugLog('DEBUG: ⚠️ INCONSISTENCY DETECTED: Database and session have different last messages');
-            forceClearSession = true;
-          }
-        }
-        
-        // Force clear session memory if inconsistencies detected
-        if (forceClearSession) {
-          clearSessionMemory(userId);
-          debugLog('DEBUG: FORCE CLEARED session memory due to inconsistencies');
-          // Force this to be a new session when inconsistencies are detected
-          isNewSession = true;
-          debugLog('DEBUG: FORCED isNewSession = true due to inconsistencies');
-          
-          // CRITICAL FIX: Actually clear the database and reset recentMessages
-          try {
-            await Conversation.deleteOne({ userId });
-            debugLog('DEBUG: FORCE DELETED conversation from database due to inconsistencies');
-            conversation = new Conversation({ userId, messages: [] });
-            await conversation.save();
-            debugLog('DEBUG: FORCE CREATED new conversation due to inconsistencies');
-            recentMessages = []; // Reset recentMessages to empty
-            debugLog('DEBUG: FORCE RESET recentMessages to empty due to inconsistencies');
-          } catch (deleteError) {
-            debugLog('DEBUG: ERROR force deleting/creating conversation:', deleteError.message);
-            // Fallback: clear messages
-            conversation.messages = [];
-            try {
-              await conversation.save();
-              debugLog('DEBUG: Fallback: cleared conversation messages');
-            } catch (saveError) {
-              debugLog('DEBUG: ERROR in fallback save:', saveError.message);
-            }
-            recentMessages = []; // Still reset recentMessages
-            debugLog('DEBUG: Fallback: reset recentMessages to empty');
-          }
-          
-          // Re-get session history after clearing
-          const freshSessionHistory = getSessionHistory(userId);
-          debugLog('DEBUG: Fresh session history length after force clear:', freshSessionHistory.length);
-        }
-        debugLog('DEBUG: === END SESSION VS DATABASE COMPARISON ===');
-        
-      } catch (err) {
-        debugLog('DEBUG: Error loading conversation from database:', err.message);
-        // Fallback to session memory
-        const sessionHistory = getSessionHistory(userId);
-        if (sessionHistory.length === 0) {
-          isNewSession = true;
-        }
-        recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
-        debugLog('DEBUG: Using session memory fallback, messages:', recentMessages.length);
+      conversation = await Conversation.findOne({ userId });
+      if (!conversation) {
+        conversation = new Conversation({ userId, messages: [] });
       }
+      conversation.messages.push({ role: 'user', content: message });
+      recentMessages = conversation.messages.slice(-10);
     } else {
-      // For invalid userIds (like test_user), use session memory to track conversation
-      debugLog('DEBUG: Using session memory for invalid userId');
-      const sessionHistory = getSessionHistory(userId);
-      if (sessionHistory.length === 0) {
-        isNewSession = true;
-      }
-      
-      // Clear session memory if this is a new session
-      if (isNewSession) {
-        clearSessionMemory(userId);
-        debugLog('DEBUG: Cleared session memory for invalid userId new session');
-      }
-      
-      recentMessages = sessionHistory.length > 0 ? sessionHistory.slice(-10) : [];
-      debugLog('DEBUG: Session memory messages:', recentMessages.length);
+      // For invalid userIds, just use the current message
+      recentMessages = [{ role: 'user', content: message }];
     }
     
-    debugLog('DEBUG: Is new session:', isNewSession);
-    debugLog('DEBUG: Recent messages count:', recentMessages.length);
+    // Jules's authentic personality - using gender-specific context
+    const messages = [
+      { role: 'system', content: getSystemPrompt(userGender) },
+      ...recentMessages
+    ];
     
-    // === FORCE DEPLOYMENT TEST ===
-    debugLog('🚨 FORCE DEPLOYMENT TEST - This message should appear if deployment is working 🚨');
-    debugLog('🚨 Current timestamp:', new Date().toISOString());
-    debugLog('🚨 Git commit:', '64c35c1 - FORCE NODE VERSION REBUILD - CRITICAL FIX: Actually clear database');
-    debugLog('🚨 === FORCE DEPLOYMENT TEST END ===');
-    
-    // === COMPREHENSIVE DEBUGGING ===
-    debugLog('DEBUG: === COMPREHENSIVE DEBUGGING START ===');
-    debugLog('DEBUG: User ID:', userId);
-    debugLog('DEBUG: User ID type:', typeof userId);
-    debugLog('DEBUG: Is valid ObjectId:', mongoose.Types.ObjectId.isValid(userId));
-    debugLog('DEBUG: Incoming message:', message);
-    debugLog('DEBUG: Environment:', process.env.NODE_ENV);
-    debugLog('DEBUG: MongoDB URI available:', !!process.env.MONGODB_URI);
-    debugLog('DEBUG: === COMPREHENSIVE DEBUGGING END ===');
-    
-    // === VAGUE CHAT ESCALATION SYSTEM ===
-    const userMemory = getUserMemory(userId);
-    if (!userMemory.vagueChatCount) userMemory.vagueChatCount = 0;
-
-    // Only trigger vague chat detection on truly standalone vague messages
-    // Messages with substantive content should not trigger vague chat escalation
-    const isVague = (message.toLowerCase().trim() === "hey" || 
-                     message.toLowerCase().trim() === "hi" || 
-                     message.toLowerCase().trim() === "hello" || 
-                     message.toLowerCase().trim() === "hello?" || 
-                     message.toLowerCase().trim() === "wyd" || 
-                     message.toLowerCase().trim() === "you there" || 
-                     message.toLowerCase().trim() === "you there?" || 
-                     message.toLowerCase().trim() === "?" || 
-                     message.toLowerCase().trim() === "lol" || 
-                     message.toLowerCase().trim() === "idk" || 
-                     message.toLowerCase().trim() === "nothing really" || 
-                     message.toLowerCase().trim() === "just chatting") && 
-                     !/(ghost|ghosted|date|text|sent|already|thinking|advice|help|style|outfit|suit|shoes|jacket|shirt|pants|jeans|sneakers|boots|loafers|dating|relationship|breakup|feel|hurt|confused|frustrated|angry|sad|upset|anxious|nervous|worried|stressed|overthink|doubt|trust|love|like|crush|feelings|emotion|party|wedding|coffee|shop|tomorrow|weekend|today|yesterday|morning|night|evening|afternoon|time|schedule|plan|prepare|practice|rehearse|research|study|learn|understand|know|familiar|experience|background|history|story|situation|circumstance|context|details|information|facts|data|statistics|numbers|percentages|rates|scores|grades|results|outcomes|effects|impacts|consequences|benefits|advantages|disadvantages|pros|cons|positives|negatives|good|bad|better|worse|best|worst|improve|enhance|boost|increase|decrease|reduce|minimize|maximize|optimize|perfect|ideal|optimal|suitable|appropriate|relevant|related|connected|linked|associated|correlated|similar|different|unique|special|particular|specific|general|broad|narrow|wide|limited|extended|expanded|detailed|comprehensive|thorough|complete|partial|incomplete|finished|unfinished|done|undone|ready|unready|prepared|unprepared|organized|disorganized|structured|unstructured|planned|unplanned|scheduled|unscheduled|timed|untimed|measured|unmeasured|quantified|unquantified|assessed|unassessed|evaluated|unevaluated|reviewed|unreviewed|examined|unexamined|analyzed|unanalyzed|studied|unstudied|researched|unresearched|investigated|uninvestigated|explored|unexplored|discovered|undiscovered|found|unfound|identified|unidentified|recognized|unrecognized|noticed|unnoticed|observed|unobserved|seen|unseen|viewed|unviewed|watched|unwatched|monitored|unmonitored|tracked|untracked|followed|unfollowed|pursued|unpursued|chased|unchased|hunted|unhunted|sought|unsought|looked|unlooked|searched|unsearched|explored|unexplored|investigated|uninvestigated|examined|unexamined|studied|unstudied|researched|unresearched|analyzed|unanalyzed|reviewed|unreviewed|assessed|unassessed|evaluated|unevaluated|measured|unmeasured|quantified|unquantified|timed|untimed|scheduled|unscheduled|planned|unplanned|organized|disorganized|structured|unstructured|prepared|unprepared|ready|unready|done|undone|finished|unfinished|complete|incomplete|thorough|unthorough|comprehensive|uncomprehensive|detailed|undetailed|extended|unextended|expanded|unexpanded|broad|narrow|wide|limited|general|specific|particular|special|unique|different|similar|correlated|associated|linked|connected|related|relevant|appropriate|suitable|optimal|ideal|perfect|maximize|minimize|reduce|increase|boost|enhance|improve|worst|best|worse|better|bad|good|negatives|positives|cons|pros|disadvantages|advantages|benefits|consequences|impacts|effects|outcomes|results|grades|scores|rates|percentages|numbers|data|facts|information|details|context|circumstance|situation|story|history|background|experience|familiar|know|understand|learn|study|research|practice|rehearse|prepare|plan|schedule|time|year|month|week|yesterday|today|tomorrow|ready|prepared|confident|anxious|stressed|worried|nervous|excited|happy|sad|emotions|feelings|thoughts|perspective|view|opinion|what\s*do\s*you\s*think|discuss|talk\s*about|describe|explain|tell|ask|question|support|assistance|guidance|help|advice|tips|position|role|company|job|interview)/i.test(message);
-
-    if (isVague) {
-      userMemory.vagueChatCount += 1;
-      debugLog('DEBUG: VAGUE CHAT DETECTED - count:', userMemory.vagueChatCount);
-
-      const vagueCount = userMemory.vagueChatCount;
-
-      // Only trigger escalating response after 2+ vague messages
-      if (vagueCount >= 2) {
-        debugLog('DEBUG: Triggering escalating response - count:', vagueCount);
-        
-        let vagueResponse;
-        if (vagueCount <= 2) {
-          vagueResponse = "Yup, I'm here. What's up?\n\nYou bored, avoiding something, or actually want to talk about something? Dating, style, whatever. Just spit it out.";
-        } else {
-          vagueResponse = "Still doing the vague thing? Come on. What's actually on your mind? You bored? Avoiding work? Or do you actually want advice on something? Let's cut the bullshit.";
-        }
-
-        // Save the static message to conversation and return it
-        if (mongoose.Types.ObjectId.isValid(userId)) {
-          const currentTime = new Date();
-          conversation.messages.push({ 
-            role: 'user', 
-            content: message, 
-            timestamp: currentTime 
-          });
-          conversation.messages.push({ 
-            role: 'assistant', 
-            content: vagueResponse, 
-            timestamp: new Date(currentTime.getTime() + 1) 
-          });
-          await conversation.save();
-        }
-        return res.json({ reply: vagueResponse, products: [] });
-      }
-    } else {
-      // Reset vague chat count if user sends a substantive message
-      if (userMemory.vagueChatCount > 0) {
-        userMemory.vagueChatCount = 0;
-        debugLog('DEBUG: Reset vague chat count to 0');
-      }
-    }
-    
-    // Create context-aware message for routing, but use current message for intent classification
-    const conversationContext = recentMessages.map(msg => msg.content).join(' ');
-    const contextAwareMessage = `${conversationContext} ${message}`.trim();
-    
-    // === INTENT ROUTING WITH CONTEXT ===
-    debugLog('=== INTENT ROUTING DEBUG ===');
-    debugLog('DEBUG: Jules config loaded:', !!julesConfig.intent_routing);
-    debugLog('DEBUG: Available intent routing:', Object.keys(julesConfig.intent_routing || {}));
-    debugLog('DEBUG: Conversation context length:', conversationContext.length);
-    debugLog('DEBUG: Context-aware message:', contextAwareMessage.substring(0, 200) + '...');
-    debugLog('DEBUG: Current message for intent classification:', message);
-    const routedMode = routeIntent(contextAwareMessage);
-    const intent = classifyIntent(message); // Use current message, not context-aware message
-    debugLog('DEBUG: Intent classification result:', intent);
-    debugLog('DEBUG: Routed mode result:', routedMode);
-    debugLog('DEBUG: Message being routed:', message);
-    debugLog('=== INTENT ROUTING DEBUG END ===');
-    
-    // Use intent classification to route to specialized handlers
-    if (intent === "emotional_support" || intent === "dating_advice") {
-      // Route to dating controller
-      const { handleDating } = require('./datingController');
-      return handleDating(req, res);
-    } else if (intent === "practice" || message.toLowerCase().includes("practice") || message.toLowerCase().includes("roleplay")) {
-      // Route to practice controller
-      const { handlePractice } = require('./practiceController');
-      return handlePractice(req, res);
-    } else if (intent === "style_advice" || message.toLowerCase().includes("pack") || message.toLowerCase().includes("travel") || message.toLowerCase().includes("outfit") || message.toLowerCase().includes("wear") || message.toLowerCase().includes("what should i wear") || message.toLowerCase().includes("what should i rock") || message.toLowerCase().includes("outfit advice") || message.toLowerCase().includes("fashion advice") || message.toLowerCase().includes("style advice") || message.toLowerCase().includes("what to wear") || message.toLowerCase().includes("clothing") || message.toLowerCase().includes("dress") || message.toLowerCase().includes("look") || message.toLowerCase().includes("appearance") || message.toLowerCase().includes("grooming")) {
-      // Route to style controller (removed sneakers/shoes to avoid conflict with product requests)
-      const { handleStyle } = require('./styleController');
-      return handleStyle(req, res);
-    } else if (intent === "general_chat" && !message.toLowerCase().includes("advice") && !message.toLowerCase().includes("help")) {
-      // Route to conversation controller for casual chat
-      const { handleConversation } = require('./conversationController');
-      return handleConversation(req, res);
-    }
-    
-    // Use intent classification to override routing when appropriate (for remaining cases)
-    let finalMode = routedMode;
-    if (intent === "style_advice") {
-      finalMode = "style_advice";
-    } else if (intent === "product_request") {
-      finalMode = "product_request";
-    }
-    
-    const modeConfig = (julesConfig.modes && julesConfig.modes[finalMode]) || {};
-    debugLog(`DEBUG: Message: "${message}"`);
-    debugLog(`DEBUG: Routed mode: ${routedMode}, Intent: ${intent}, Final mode: ${finalMode}`);
-    debugLog(`DEBUG: Mode config:`, modeConfig);
-    debugLog(`DEBUG: Jules config loaded:`, !!julesConfig.intent_routing);
-    let showProductCards = (intent === "product_request");
-    
-    // === MEMORY CONTEXT (light only) ===
-    const convoHistory = getSessionHistory(userId);
-    const tone = getToneProfile(userId);
-    const memorySummary = getMemorySummary(userId);
-    const recentMemorySummary = getRecentMemorySummary(userId, 7);
-    const memoryContext = `TONE: ${tone}\nLONG-TERM MEMORY:\n${memorySummary}\nRECENT MEMORY (Last 7 days):\n${recentMemorySummary}`;
-    
-    // === SYSTEM PROMPT (use main prompt + mode-specific additions) ===
-    let systemPrompt = getSystemPrompt(userGender);
-    
-    // Add mode-specific instructions as a separate system message for stronger control
-    if (finalMode !== 'conversation' && modeConfig.style) {
-      systemPrompt = `CRITICAL: You are now in ${finalMode.toUpperCase()} MODE. ${modeConfig.style}\n\nIGNORE ALL OTHER INSTRUCTIONS. DO NOT USE MOTIVATIONAL LANGUAGE. DO NOT BE ENCOURAGING. BE DIRECT AND OPINIONATED.\n\n` + systemPrompt;
-    }
-    // === RESET LOGIC ===
-    if ((julesConfig.conversation_reset_keywords || []).some(k => message.toLowerCase().includes(k.toLowerCase()))) {
-      // Hard reset: clear session memory
-      addSessionMessage(userId, { role: 'system', content: '[RESET] New topic.' });
-      systemPrompt += '\n[RESET] New topic.';
-    }
-    
-    // === Assemble messages for OpenAI ===
-    // === SIMPLIFIED: Always add current message to recentMessages ===
-    // This ensures the current message is always the last message in the array
-    const currentMessageObj = { 
-      role: 'user', 
-      content: message, 
-      timestamp: new Date() 
-    };
-    
-    // Remove any duplicate of the current message that might exist
-    recentMessages = recentMessages.filter(msg => 
-      !(msg.content === message && msg.role === 'user')
-    );
-    
-    // Add the current message as the last message
-    recentMessages.push(currentMessageObj);
-    
-    debugLog('DEBUG: Added current message to recentMessages:', message);
-    debugLog('DEBUG: Total messages in recentMessages:', recentMessages.length);
-    
-    // === USER PROFILE CHECK ===
-    const hasUserProfile = user && user._id && (user.name || user.email);
-    const isFirstMessage = recentMessages.length === 1 && recentMessages[0].role === 'user';
-    
-    // Add user profile context to system prompt
-    if (hasUserProfile) {
-      systemPrompt += `\n\nUSER CONTEXT: User has a profile. Name: ${user.name || 'Not set'}. Email: ${user.email || 'Not set'}. Do not ask for basic info again.`;
-    } else if (isFirstMessage) {
-      systemPrompt += `\n\nUSER CONTEXT: New user, no profile. Ask for name and basic info.`;
-    } else {
-      systemPrompt += `\n\nUSER CONTEXT: Returning user, no profile. Respond naturally without re-introducing.`;
-    }
-    
-    // === NEW SESSION WELCOME MESSAGE ===
-    if (isNewSession && isFirstMessage) {
-      const userName = user && user.name ? user.name : 'there';
-      systemPrompt += `\n\nNEW SESSION: This is a new conversation session. Start with a simple greeting like "Hi ${userName}! What's going on?" Do not ask for basic info or introduce yourself extensively.`;
-    }
-    
-    // === FIXED MESSAGE ASSEMBLY: Separate Current Message from History ===
-    // Create messages array with clear separation between conversation history and current message
-    const conversationHistory = recentMessages.slice(0, -1); // All messages except the current one
-    const currentMessage = recentMessages[recentMessages.length - 1]; // The current message to respond to
-    
-    // === CRITICAL DEBUG: Check what's actually in recentMessages ===
-    debugLog('DEBUG: === CRITICAL MESSAGE DEBUG ===');
-    debugLog('DEBUG: Incoming message:', message);
-    debugLog('DEBUG: recentMessages length:', recentMessages.length);
-    debugLog('DEBUG: recentMessages contents:', JSON.stringify(recentMessages.map(m => ({ role: m.role, content: m.content.substring(0, 50) + '...' })), null, 2));
-    debugLog('DEBUG: currentMessage from recentMessages:', currentMessage ? { role: currentMessage.role, content: currentMessage.content } : 'null');
-    debugLog('DEBUG: === END CRITICAL MESSAGE DEBUG ===');
-    
-    // Ensure we have a current message to respond to
-    let messages;
-    if (!currentMessage) {
-      debugLog('DEBUG: No current message found, using the incoming message');
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { 
-          role: 'user', 
-          content: `CURRENT MESSAGE TO RESPOND TO: ${message}` 
-        }
-      ];
-    } else {
-      messages = [
-        { role: 'system', content: systemPrompt },
-        // Add conversation history for context (if any)
-        ...conversationHistory,
-        // Add current message clearly marked
-        { 
-          role: 'user', 
-          content: `CURRENT MESSAGE TO RESPOND TO: ${currentMessage.content}` 
-        }
-      ];
-    }
-    
-    debugLog('DEBUG: === MESSAGE ASSEMBLY DEBUG ===');
-    debugLog('DEBUG: Conversation history messages:', conversationHistory.length);
-    debugLog('DEBUG: Current message to respond to:', currentMessage.content);
-    debugLog('DEBUG: Total messages for OpenAI:', messages.length);
-    debugLog('DEBUG: === END MESSAGE ASSEMBLY DEBUG ===');
+    // Dynamic token management based on conversation context
+    let maxTokens;
     const messageCount = messages.length;
-    // === Max tokens per mode ===
-    let maxTokens = modeConfig.max_tokens || 2000;
     const isAdviceQuestion = /(ghost|date|relationship|breakup|text|message|call|ignore|respond|feel|hurt|confused|frustrated|angry|sad|upset|anxious|nervous|worried|stressed|overthink|doubt|trust|love|like|crush|feelings|emotion)/i.test(message);
     const isProductRequestType = /(show|find|recommend|suggest|buy|shop|product|clothing|outfit|shoes|shirt|pants|jacket)/i.test(message);
     const isSimpleQuestion = /(hi|hello|hey|thanks|thank you|bye|goodbye|yes|no|ok|okay)/i.test(message);
-
+    
     if (isSimpleQuestion) {
-      maxTokens = 1500;
+      maxTokens = 1500; // Increased for simple interactions
     } else if (isAdviceQuestion) {
-      maxTokens = 3000;
+      maxTokens = 3000; // Reduced for complex advice to stay within limits
     } else if (isProductRequestType) {
-      maxTokens = 2000;
+      maxTokens = 2000; // Reduced for product recommendations
     } else if (messageCount > 10) {
-      maxTokens = 3000;
+      maxTokens = 3000; // Reduced for deep conversations
     } else {
-      maxTokens = 2000;
+      maxTokens = 2000; // Reduced for general conversation
     }
     
-    // === Debug logging before OpenAI call ===
-    debugLog("Intent:", intent);
-    debugLog("Mode:", routedMode);
-    debugLog("System prompt:", systemPrompt);
+    console.log(`DEBUG: Context-aware token limit - Message count: ${messageCount}, Type: ${isAdviceQuestion ? 'advice' : isProductRequestType ? 'product' : isSimpleQuestion ? 'simple' : 'general'}, Max tokens: ${maxTokens}`);
     
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o',
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
       messages,
       max_tokens: maxTokens,
-      temperature: 0.7,
     });
-    let reply = completion.choices[0].message.content;
-
-    // === Enforce reply style ===
-    // (Add any additional reply post-processing here if needed)
-    // Guard to prevent over-roleplaying and dating dilemma assumptions
-    if (!message.toLowerCase().includes("dating") && reply.toLowerCase().includes("dating dilemma")) {
-      reply = reply.replace(/dating dilemma[^.?!]*[.?!]/gi, "");
-    }
-
-    // === WOMEN'S FASHION BLOCKER ===
-    if (!shouldHandleWomensFashion(message)) {
-      reply = "I’m not your girl for women’s fashion — unless it’s for a gift or you’re styling someone. That I can help with. Just give me the context.";
-      products = [];
-    }
-
-    // Add assistant's response to session memory (avoid duplicates)
-    const lastSessionMessage = getSessionHistory(userId).slice(-1)[0];
-    if (!lastSessionMessage || lastSessionMessage.content !== reply) {
-      addSessionMessage(userId, { 
-        role: "assistant", 
-        content: reply, 
-        timestamp: new Date() 
-      });
-      debugLog('DEBUG: Added assistant response to session memory');
-    } else {
-      debugLog('DEBUG: Assistant response already exists in session memory, skipping add');
-    }
+    const reply = completion.choices[0].message.content;
     
-    // Update user memory based on intent with enhanced extraction
-    const extractedData = {};
-    
-    switch (intent) {
-      case "style_advice":
-        const style = extractStyle(message);
-        if (style !== "general") {
-          extractedData.stylePreferences = style;
-        }
-        break;
-      case "emotional_support":
-        const emotion = extractEmotion(message);
-        if (emotion !== "general emotional state") {
-          extractedData.emotionalNotes = emotion;
-        }
-        break;
-      case "product_request":
-        const extractedProducts = extractProducts(message);
-        if (extractedProducts !== "clothing interest") {
-          extractedData.productHistory = extractedProducts;
-        }
-        break;
-      case "dating_advice":
-        const goal = extractGoals(message);
-        if (goal !== "personal development") {
-          extractedData.goals = goal;
-        }
-        break;
-    }
-    
-    // Only update memory if we extracted meaningful data
-    if (Object.keys(extractedData).length > 0) {
-      updateUserMemory(userId, extractedData);
-      debugLog('DEBUG: Updated user memory with:', extractedData);
-    }
-    
-    // === ENHANCED DEBUG LOGGING ===
-    debugLog('=== PRODUCTION DEBUG START ===');
-    debugLog('DEBUG: User ID:', userId);
-    debugLog('DEBUG: Message count:', messageCount);
-    debugLog('DEBUG: Max tokens:', maxTokens);
-    debugLog('DEBUG: Temperature:', 0.7);
-    debugLog('DEBUG: Model: gpt-4o');
-    debugLog('DEBUG: Intent:', intent);
-    debugLog('DEBUG: Mode:', routedMode);
-    debugLog('DEBUG: Final mode:', finalMode);
-    
-    // Log memory context
-    debugLog('DEBUG: Memory context length:', memoryContext.length);
-    debugLog('DEBUG: Memory context preview:', memoryContext.substring(0, 200) + '...');
-    
-    // Log conversation history
-    debugLog('DEBUG: Recent messages count:', recentMessages.length);
-    debugLog('DEBUG: Recent messages:', JSON.stringify(recentMessages, null, 2));
-    
-    // Log system prompt
-    debugLog('DEBUG: System prompt length:', systemPrompt.length);
-    debugLog('DEBUG: System prompt preview:', systemPrompt.substring(0, 300) + '...');
-    
-    // Log OpenAI API call details
-    debugLog('DEBUG: OpenAI API call - messages count:', messages.length);
-    debugLog('DEBUG: OpenAI API call - first message role:', messages[0].role);
-    debugLog('DEBUG: OpenAI API call - last message role:', messages[messages.length - 1].role);
-    
-    // Log OpenAI response
-    debugLog('DEBUG: OpenAI raw response:', JSON.stringify(completion, null, 2));
-    debugLog('DEBUG: Response length:', reply.length);
-    debugLog('DEBUG: Response preview:', reply.substring(0, 200) + '...');
-    debugLog('DEBUG: Response ends with:', reply.substring(reply.length - 50));
-    debugLog('DEBUG: Full response:', reply);
-    debugLog('=== PRODUCTION DEBUG END ===');
+    // Debug: Log response length to see if it's being truncated
+    console.log('DEBUG: Response length:', reply.length);
+    console.log('DEBUG: Response preview:', reply.substring(0, 200) + '...');
+    console.log('DEBUG: Response ends with:', reply.substring(reply.length - 50));
+    console.log('DEBUG: Full response:', reply);
     
     // Parse product Markdown links in the reply and convert to structured product objects
     let products = [];
@@ -1027,87 +363,182 @@ async function handleChatInternal(message, req, res) {
       cleanedReply = cleanedReply.replace(match[0], '');
     }
     
-    // Product search is now handled by the products route for better functionality
-    
-    const finalReply = cleanedReply.trim();
-    
-    // For product requests, always use the products route for intelligent context extraction and brand-specific searching
-    if (intent === "product_request" && showProductCards) {
-      debugLog('DEBUG: Product request detected, routing to products route...');
-      
+    // If this is a product request and we don't have products yet, search for them
+    if (isProductRequest && products.length === 0) {
+      console.log('DEBUG: Product request detected, searching for products...');
       try {
-        const productsResponse = await axios.post(`${req.protocol}://${req.get('host')}/api/products`, {
-          message,
-          conversation,
-          julesResponse: finalReply // Pass Jules's current response so products route can extract brands from it
-        }, {
-          headers: {
-            'Authorization': req.headers.authorization,
-            'Content-Type': 'application/json'
-          }
+        // Call the product search function directly
+        const apiKey = process.env.GOOGLE_API_KEY;
+        const cseId = process.env.GOOGLE_CSE_ID;
+        console.log('DEBUG: API Key exists:', !!apiKey);
+        console.log('DEBUG: CSE ID exists:', !!cseId);
+        
+        // Use the actual user message for search, not extracted content - prioritize current request
+        let searchQuery = message;
+        const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+        const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
+        
+        if (brandMatch && productMatch) {
+          searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
+        } else if (brandMatch) {
+          searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+        } else if (productMatch) {
+          searchQuery = `men's ${productMatch[0]} buy shop`;
+        } else {
+          // Use the original message with "men's" prefix for better results
+          searchQuery = `men's ${message} buy shop`;
+        }
+        
+        console.log('DEBUG: Generated search query:', searchQuery);
+        
+        const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+          params: {
+            key: apiKey,
+            cx: cseId,
+            q: searchQuery,
+            num: 6,
+            safe: 'active',
+          },
         });
         
-        if (productsResponse.data.hasProducts && productsResponse.data.products.length > 0) {
-          debugLog('DEBUG: Products found via route:', productsResponse.data.products.length);
-          // Replace the products array with the intelligent results from the products route
-          products = [...productsResponse.data.products]; // Create new array with products from route
-          showProductCards = true;
+        const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+        const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
+        const searchProducts = (response.data.items || [])
+          .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+          .filter(item => !nonProductSites.test(item.link))
+          .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion/i.test(item.title + ' ' + (item.snippet || ''))) // Only shopping/product sites
+          .slice(0, 3)
+          .map((item, index) => ({
+            title: item.title || `Option ${index + 1}`,
+            link: item.link,
+            image: item.pagemap?.cse_image?.[0]?.src || '',
+            price: item.pagemap?.offer?.[0]?.price || '',
+            description: item.snippet || '',
+          }));
+        
+        if (searchProducts.length > 0) {
+          console.log('DEBUG: Found products:', searchProducts.length);
+          products = searchProducts;
         } else {
-          debugLog('DEBUG: No products found via route');
+          console.log('DEBUG: No products found in search results');
         }
-      } catch (err) {
-        console.error('Products route error:', err);
-        // Let the AI handle the fallback response naturally
+      } catch (productError) {
+        console.error('Product search error in chat:', productError);
+        // Continue without products if search fails
       }
     }
     
-    debugLog('DEBUG: Backend final reply length:', finalReply.length);
-    debugLog('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
-    debugLog('DEBUG: Backend sending response to frontend');
+    // If user is asking for links, try to extract product/brand names from last assistant message
+    if (isLinkRequest) {
+      console.log('DEBUG: Link request detected, extracting products from conversation...');
+      
+      // Check if this is a request for events/meetups rather than products
+      const eventKeywords = /(meetup|workshop|class|event|drawing|art|portland)/i;
+      if (eventKeywords.test(message)) {
+        // For event/meetup requests, don't search for products
+        conversation.messages.push({ role: 'assistant', content: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.` });
+        await conversation.save();
+        return res.json({ reply: `I don't have direct links to those specific events, but you can check out Meetup.com for Portland art groups, or look up PNCA (Pacific Northwest College of Art) for their class schedules. The Portland Art Museum also has events listed on their website.`, products: [] });
+      }
+      
+      // Use the user's message directly for search - prioritize current request over conversation context
+      let searchQuery = message;
+      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
+      const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
+      
+      if (brandMatch && productMatch) {
+        searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
+      } else if (brandMatch) {
+        searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+      } else if (productMatch) {
+        searchQuery = `men's ${productMatch[0]} buy shop`;
+      } else {
+        // Use the original message with "men's" prefix for better results
+        searchQuery = `men's ${message} buy shop`;
+      }
+      
+      if (searchQuery) {
+        console.log('DEBUG: Using search query from user message:', searchQuery);
+        // Run product search for the extracted brands/products
+        try {
+          const apiKey = process.env.GOOGLE_API_KEY;
+          const cseId = process.env.GOOGLE_CSE_ID;
+          const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+            params: {
+              key: apiKey,
+              cx: cseId,
+              q: searchQuery,
+              num: 6,
+              safe: 'active',
+            },
+          });
+          const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+          const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
+          const searchProducts = (response.data.items || [])
+            .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+            .filter(item => !nonProductSites.test(item.link))
+            .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion/i.test(item.title + ' ' + (item.snippet || ''))) // Only shopping/product sites
+            .slice(0, 3)
+            .map((item, index) => ({
+              title: item.title || `Option ${index + 1}`,
+              link: item.link,
+              image: item.pagemap?.cse_image?.[0]?.src || '',
+              price: item.pagemap?.offer?.[0]?.price || '',
+              description: item.snippet || '',
+            }));
+          if (searchProducts.length > 0) {
+            // Save the link request and product results to conversation
+            conversation.messages.push({ role: 'assistant', content: `Here are some links to check out the products I mentioned:` });
+            await conversation.save();
+            return res.json({ reply: `Here are some links to check out the products I mentioned:`, products: searchProducts });
+          } else {
+            conversation.messages.push({ role: 'assistant', content: `I couldn't find direct links for those products. Want me to try searching for something else?` });
+            await conversation.save();
+            return res.json({ reply: `I couldn't find direct links for those products. Want me to try searching for something else?`, products: [] });
+          }
+        } catch (err) {
+          console.error('Product search error for link request:', err);
+          conversation.messages.push({ role: 'assistant', content: `Sorry, I couldn't pull up links for those right now. Want me to try searching for something else?` });
+          await conversation.save();
+          return res.json({ reply: `Sorry, I couldn't pull up links for those right now. Want me to try searching for something else?`, products: [] });
+        }
+      } else {
+        // If we can't extract any product/brand names, ask for clarification
+        conversation.messages.push({ role: 'assistant', content: `Are you asking where you can buy the products I just mentioned? If so, let me know which one and I'll try to find links!` });
+        await conversation.save();
+        return res.json({ reply: `Are you asking where you can buy the products I just mentioned? If so, let me know which one and I'll try to find links!`, products: [] });
+      }
+    }
     
-    // Save conversation to database (only once)
-    if (conversation && mongoose.Types.ObjectId.isValid(userId)) {
-      // Save both user message and assistant response together to ensure proper ordering
-      const currentTime = new Date();
-      conversation.messages.push({ 
-        role: 'user', 
-        content: message, 
-        timestamp: currentTime 
-      });
-      conversation.messages.push({ 
-        role: 'assistant', 
-        content: finalReply, 
-        timestamp: new Date(currentTime.getTime() + 1) // Ensure assistant message comes after user message
-      });
+    const finalReply = cleanedReply.trim();
+    console.log('DEBUG: Backend final reply length:', finalReply.length);
+    console.log('DEBUG: Backend final reply ends with:', finalReply.substring(finalReply.length - 50));
+    console.log('DEBUG: Backend sending response to frontend');
+    
+    conversation.messages.push({ role: 'assistant', content: finalReply });
+    
+    console.log('DEBUG: About to send JSON response');
+    res.json({ reply: finalReply, products });
+    console.log('DEBUG: JSON response sent successfully');
+    
+    // Save conversation after sending response to avoid blocking
+    if (mongoose.Types.ObjectId.isValid(userId)) {
       try {
         await conversation.save();
-        debugLog('DEBUG: Conversation saved successfully with both messages and timestamps');
-        debugLog('DEBUG: Database now has', conversation.messages.length, 'total messages');
-        
-        // Verify the save worked by checking the database again
-        const verifyConversation = await Conversation.findOne({ userId });
-        debugLog('DEBUG: Verification - Database conversation has', verifyConversation?.messages?.length || 0, 'messages');
-        
+        console.log('DEBUG: Conversation saved successfully');
       } catch (saveError) {
-        debugLog('DEBUG: Error saving conversation:', saveError.message);
+        console.error('DEBUG: Error saving conversation:', saveError);
         // Don't fail the request if save fails
       }
     }
-    
-    debugLog('DEBUG: About to send JSON response');
-    // Only include products in response if showProductCards is true
-    const finalProducts = showProductCards ? products : [];
-    res.json({ reply: finalReply, products: finalProducts });
-    debugLog('DEBUG: JSON response sent successfully');
   } catch (err) {
     // Handle CastError specifically for invalid userIds
     if (err.name === 'CastError' && err.kind === 'ObjectId') {
-      debugLog('DEBUG: Caught CastError for invalid ObjectId:', err.value);
+      console.log('DEBUG: Caught CastError for invalid ObjectId:', err.value);
       return res.status(400).json({ error: 'Invalid user ID format' });
     }
     console.error('Chat handler error:', err);
-    // Universal fallback reply
-    return res.json({ reply: "Ugh, tech hiccup. But I’m still here—hit me again or ask anything!", products: [] });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -1126,8 +557,8 @@ exports.productSearch = async (req, res) => {
   const cseId = process.env.GOOGLE_CSE_ID;
   let searchQuery = query;
   try {
-    const llmResult = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o',
+    const llmResult = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
         { role: 'user', content: query }
@@ -1154,7 +585,7 @@ exports.productSearch = async (req, res) => {
     const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
     const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review/i;
     // Try to extract product info (name, image, price, description, link)
-              const searchResults = (response.data.items || [])
+    const products = (response.data.items || [])
       .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
       .filter(item => !nonProductSites.test(item.link))
       .slice(0, 4)
@@ -1165,7 +596,7 @@ exports.productSearch = async (req, res) => {
         price: item.pagemap?.offer?.[0]?.price || '',
         description: item.snippet || '',
       }));
-    res.json({ products: searchResults });
+    res.json({ products });
   } catch (err) {
     console.error('Product search error:', err.response ? err.response.data : err.message);
     res.status(500).json({ error: 'Product search failed.', details: err.response ? err.response.data : err.message });
@@ -1196,4 +627,4 @@ exports.getChatHistory = async (req, res) => {
     console.error('Error retrieving chat history:', err);
     res.status(500).json({ error: 'Error retrieving chat history.' });
   }
-};
+}; 
