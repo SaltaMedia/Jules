@@ -214,7 +214,19 @@ function stripClosers(text) {
     /(?:Enjoy.*?getting your art on.*?)$/i,
     /(?:Enjoy.*?getting your creativity flowing.*?)$/i,
     /(?:babe[.!?])$/i,
-    /(?:buttercup[.!?])$/i
+    /(?:buttercup[.!?])$/i,
+    /(?:Time to rock.*?)$/i,
+    /(?:rock that.*?)$/i,
+    /(?:crush those.*?)$/i,
+    /(?:hit the gym in style.*?)$/i,
+    /(?:Trust me, it's a game-changer.*?)$/i,
+    /(?:effortlessly cool.*?)$/i,
+    /(?:stylish and edgy.*?)$/i,
+    /(?:confidence and flair.*?)$/i,
+    /(?:dominate your workouts.*?)$/i,
+    /(?:elevate your.*?)$/i,
+    /(?:step up your.*?)$/i,
+    /(?:level up your.*?)$/i
   ];
   
   // Only apply patterns that match at the end of the text
