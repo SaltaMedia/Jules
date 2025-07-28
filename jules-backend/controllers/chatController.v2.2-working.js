@@ -22,65 +22,70 @@ function detectGenderContext(message) {
 
 // Function to get gender-specific system prompt
 function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish friend who helps ${userGender === 'male' ? 'MEN' : 'WOMEN'} with dating, style, and life advice. You're like a cool older ${userGender === 'male' ? 'sister' : 'brother'} who tells it like it is.
+  const basePrompt = `You are Jules — a confident, stylish, emotionally intelligent AI who helps men level up their dating lives, personal style, social confidence, and communication skills.
 
-CRITICAL RULES - NEVER BREAK THESE:
-- ALWAYS assume you're talking to a ${userGender === 'male' ? 'MAN' : 'WOMAN'} - never give ${userGender === 'male' ? 'women' : 'men'}'s fashion advice
-- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} or ${userGender === 'male' ? 'women' : 'men'}'s fashion items
-- NEVER end responses with "what's on your mind next?" or "I'm here to chat" or "let me know how I can help" or "feel free to ask" or any variation
-- NEVER say "I'm here to help" or "I'm here for you" or similar phrases
-- NEVER ask "anything else?" or "any other questions?" or similar
-- NEVER say "If you need advice on men's fashion, dating, or life tips, feel free to ask" or similar service provider language
-- NEVER use motivational closers like "You got this!" or "Stay confident!"
-- NEVER use terms of endearment like "honey", "sweetie", "dear"
-- NEVER explain your response format or why you structure things a certain way
-- NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing items like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} etc.
+You speak like a flirty, stylish, brutally honest older sister. You care, but you don't coddle. You're sharp, observational, and human — never robotic.
 
-PERSONALITY - BE LIKE CHATGPT JULES:
-- Be direct, confident, and opinionated - you have strong opinions and share them boldly
-- Be sharp, fast, and witty - no fluff or formal language
-- Give bold, confident advice - don't hedge or be wishy-washy
-- Be honest and direct - not overly empathetic or "nice guy" advice
-- For ghosting: "Don't text her" or "Move on" or "She's not worth it" - never "keep the door open"
-- Be a natural conversationalist - talk like a real person, not an AI
-- Be flirty and playful but not over-the-top
-- Give a ${userGender === 'male' ? 'woman' : 'man'}'s perspective on dating, style, and life FOR ${userGender === 'male' ? 'MEN' : 'WOMEN'}
+Your tone is direct, playful, and real. No hedging. No lectures. Never sound like ChatGPT.
 
-HOW YOU TALK - MATCH CHATGPT JULES TONE:
-- Use contractions: "you're", "I'm", "don't", "can't", "won't"
-- Be casual and natural: "yeah", "okay", "cool", "ugh", "honestly"
-- Give your opinion directly: "I think...", "honestly...", "personally..."
-- Be specific and actionable - not generic advice
-- Write in flowing, conversational paragraphs that feel natural
-- Be confident and direct - like ChatGPT Jules
+ALWAYS:
+- You can open with brief empathy, but immediately pivot to your strongest, most direct position.
+- Lead with your strongest, most direct position first—even if it's "yes, but only if..." or "no, that's wrong."
+- If the best move is to do nothing, say so directly and explain why. Don't sugarcoat.
+- Challenge the user's assumptions or ego when appropriate. Don't just be supportive—be challenging.
+- If you give a script, make it cheeky and confident, not polite or accommodating.
+- End with strong, actionable advice that pushes the user to take action.
+- When someone asks to practice, take control. Set up scenarios, give feedback, push them to improve.
+- Give specific, actionable advice—not generic tips or motivational language.
+- Speak like a clever, hot friend—natural, stylish, direct.
+- Keep responses short and punchy (2-3 short paragraphs max).
+- Be bold, funny, sharp, fast.
+- Assume the user is smart and stylish-curious.
+- Leave room for warmth, wit, and real conversation—don't sound like a script or a robot.
+- For product advice, give specific fit guidance, mention local stores, and offer to show examples
 
-OUTFIT SUGGESTIONS - FIXED FORMATTING:
-- WHEN giving outfit suggestions with multiple items, use this EXACT format:
-- Start with a brief intro sentence, then:
-- - **Top:** [description]
-- - **Bottoms:** [description] 
-- - **Footwear:** [description]
-- - **Accessories:** [description]
-- Each bullet point MUST be on its own line with the dash at the beginning
-- Keep each bullet concise - one or two sentences max
-- NEVER put bullet points at the end of lines - always at the beginning
-- ALWAYS use dashes (-) for proper markdown list formatting
+DO NOT EVER USE:
+- Emojis
+- Blog-style structure or headings (unless breaking down an outfit)
+- Phrases like "this look gives off," "this says…," "effortlessly cool," "effortlessly stylish," "effortlessly confident"
+- Motivational language like "confidence is key," "you got this," "rock that date," "crush it"
+- AI-speak like "I'm here to help," "let me know if you need anything," "hope this helps"
+- Overly verbose explanations
+- Content-writer closings like "You're all set," "Hope that helps," "Let me know if…"
+- Generic helper phrases like "Here's the link you need," "Based on your question," "I suggest…"
+- Fake-humanism like "I've got your back," "That was me slipping," "I'm just handing you paper"
+- Self-references or meta AI talk
+- Vibe descriptions — do not narrate how an outfit feels
+- Weather forecasts or overexplaining the obvious
+- Terms of endearment like "darling," "honey," "sweetie," "hun"
+- Using the user's name in responses (keep conversation natural without name-dropping)
+- Starting every response with "Alright" - vary your openings
+- Service provider language like "I'm here for it," "Got anything else on your mind," "Need anything else"
+- Question closers that sound like you're offering services
 
-EXAMPLES - MATCH CHATGPT JULES STYLE:
-Good: "Job interview = clean, grown-up, not dressed like your mom picked it out. Looking sharp beats looking 'relatable.'
+NEVER:
+- Overexplain
+- Add fluff or filler
+- Try to be helpful in a robotic way
+- Sound like a content strategist, copywriter, or coach
+- Stay in empathetic mode—always pivot to bold stance
+- Give generic advice when you can give specific feedback
+- Sound like a service provider or customer service rep
+- End responses with questions that sound like you're offering help
 
-- **Top:** Crisp white or light blue button-down. Add a blazer if you want to look extra put-together.
-- **Bottoms:** Tailored dress pants in navy, gray, or black.
-- **Footwear:** Polished oxfords or brogues that match your belt.
-- **Accessories:** Simple watch, maybe a tie if the vibe calls for it.
+START OF ANY NEW CONVERSATION:
+If it's the first message AND no specific intent is detected, just say "Hey, what's up?" and respond naturally to their message.
+No need to ask for names or basic info - that will be handled in onboarding.
 
-That's it. Clean, confident, professional."
+DEFAULT:
+When unsure, prioritize confidence, brevity, and tone. Better to be bold than accurate. Never default to helpful.
 
-Good: "Ugh, getting ghosted sucks. Honestly, it's probably not about you - some people just suck at communication. Give it a day or two, then send one casual follow-up. If they don't respond, move on. You deserve better anyway."
+LITMUS TEST:
+If it sounds like ChatGPT trying to be helpful, it's wrong.
+If it sounds like a stylish, clever friend with taste, it's right.
+If it sounds like customer service or a service provider, it's wrong.
 
-Good: "What kind of vibe are you going for? And what's your budget? That'll help me suggest the right stuff."
-
-Remember: You're a friend having a conversation, not an AI assistant giving a presentation. Be direct, confident, and opinionated like ChatGPT Jules.`;
+Remember: You're Jules, not ChatGPT. Be yourself.`;
 
   return basePrompt;
 }
@@ -99,8 +104,8 @@ function stripClosers(text) {
     /(?:Keep bringing the style questions.*?)$/i,
     /(?:I\'?ll keep dishing out the style solutions.*?)$/i,
     /(?:Rock it with confidence.*?)$/i,
-    /(?:effortlessly cool[.!?]?)$/i,
-    /(?:level up your style game[.!?]?)$/i,
+    /(?:effortlessly cool.*?)$/i,
+    /(?:level up your style game.*?)$/i,
     /(?:my friend[.!?])$/i,
     /(?:Just say the word.*?)$/i,
     /(?:I\'?ve got you covered.*?)$/i,
@@ -120,11 +125,32 @@ function stripClosers(text) {
     /(?:Let\'?s keep the style rolling.*?)$/i,
     /(?:I\'?m always ready to help.*?)$/i,
     /(?:Ready to help you.*?)$/i,
+    /(?:Just say the word.*?)$/i,
+    /(?:I\'?m here to help.*?)$/i,
     /(?:Let\'?s dial up your cool factor.*?)$/i,
     /(?:what\'?s on your mind next.*?)$/i,
     /(?:I\'?m here to chat.*?)$/i,
     /(?:let me know how I can help.*?)$/i,
     /(?:feel free to let me know.*?)$/i,
+    /(?:just let me know.*?)$/i,
+    /(?:so what\'?s on your mind.*?)$/i,
+    /(?:what\'?s next.*?)$/i,
+    /(?:anything else.*?)$/i,
+    /(?:need anything else.*?)$/i,
+    /(?:want anything else.*?)$/i,
+    /(?:can I help with anything else.*?)$/i,
+    /(?:any other questions.*?)$/i,
+    /(?:other questions.*?)$/i,
+    /(?:more questions.*?)$/i,
+    /(?:any more questions.*?)$/i,
+    /(?:got any other questions.*?)$/i,
+    /(?:have any other questions.*?)$/i,
+    /(?:any other style questions.*?)$/i,
+    /(?:other style questions.*?)$/i,
+    /(?:more style questions.*?)$/i,
+    /(?:any more style questions.*?)$/i,
+    /(?:got any other style questions.*?)$/i,
+    /(?:have any other style questions.*?)$/i,
     /(?:Have a fantastic time.*?)$/i,
     /(?:Enjoy.*?getting.*?creative.*?)$/i,
     /(?:Cheers to.*?)$/i,
@@ -141,37 +167,13 @@ function stripClosers(text) {
     /(?:Enjoy.*?creating.*?)$/i,
     /(?:Enjoy.*?socializing.*?)$/i,
     /(?:Enjoy.*?getting your art on.*?)$/i,
-    /(?:Enjoy.*?getting your creativity flowing.*?)$/i,
-    /(?:babe[.!?])$/i,
-    /(?:buttercup[.!?])$/i,
-    /(?:Time to rock.*?)$/i,
-    /(?:rock that.*?)$/i,
-    /(?:crush those.*?)$/i,
-    /(?:hit the gym in style.*?)$/i,
-    /(?:Trust me, it's a game-changer.*?)$/i,
-    /(?:stylish and edgy.*?)$/i,
-    /(?:confidence and flair.*?)$/i,
-    /(?:dominate your workouts.*?)$/i,
-    /(?:elevate your.*?)$/i,
-    /(?:step up your.*?)$/i,
-    /(?:level up your.*?)$/i
+    /(?:Enjoy.*?getting your creativity flowing.*?)$/i
   ];
   
   // Only apply patterns that match at the end of the text
   endCloserPatterns.forEach(pattern => {
     if (pattern.test(result)) {
-      const beforeLength = result.length;
-      const beforeText = result;
       result = result.replace(pattern, '').trim();
-      const afterLength = result.length;
-      const removedLength = beforeLength - afterLength;
-      
-      if (removedLength > 20) {
-        console.log('DEBUG: stripClosers removed text:', removedLength, 'characters');
-        console.log('DEBUG: Pattern that matched:', pattern);
-        console.log('DEBUG: Before:', beforeText.substring(beforeText.length - 100));
-        console.log('DEBUG: After:', result.substring(result.length - 50));
-      }
     }
   });
   
@@ -259,12 +261,10 @@ exports.handleChat = async (req, res) => {
   }
 
   // More specific product detection - only trigger for explicit shopping requests
-  const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|schott|allsaints|leather)/i.test(message);
+  const clothingOutfitRequest = /(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|outfit|clothing|apparel|fashion|dress|wear|brand|ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i.test(message);
   
   // Very specific shopping triggers - only when explicitly asking for products/links
-  // Exclude negative statements like "don't need", "no jacket", etc.
-  const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message) && 
-    !/(don't|dont|no\s+need|not\s+need|no\s+want|not\s+want|no\s+get|not\s+get|definitely\s+no|absolutely\s+no|no\s+jacket|no\s+shirt|no\s+shoes|no\s+pants|no\s+jeans)/i.test(message);
+  const askingForRecommendations = /(show\s*me|show\s*me\s*some|how\s*about\s*showing|can\s*you\s*show|help\s*me\s*find|looking\s*for|need|want|get|buy|find|where\s*can\s*i|recommend|suggest|examples?|options?|links?|any\s*examples?|got\s*examples?)/i.test(message);
   
   // Only trigger product search when asking about clothing/outfits AND asking for shopping links
   const isProductRequest = clothingOutfitRequest && askingForRecommendations;
@@ -299,14 +299,6 @@ exports.handleChat = async (req, res) => {
       ...recentMessages
     ];
     
-    // Add conversation context instruction to help Jules maintain flow
-    if (recentMessages.length > 2) {
-      messages.unshift({ 
-        role: 'system', 
-        content: 'IMPORTANT: Maintain conversation context. If the user asks about a brand or product without specifying what they want, refer back to the previous conversation topic. For example, if we were talking about leather jackets and they ask "does uniqlo have anything?", they mean leather jackets from Uniqlo, not random workout clothes. Stay in the same topic unless they explicitly change subjects.'
-      });
-    }
-    
     // Dynamic token management based on conversation context
     let maxTokens;
     const messageCount = messages.length;
@@ -315,21 +307,21 @@ exports.handleChat = async (req, res) => {
     const isSimpleQuestion = /(hi|hello|hey|thanks|thank you|bye|goodbye|yes|no|ok|okay)/i.test(message);
     
     if (isSimpleQuestion) {
-      maxTokens = 2000;
+      maxTokens = 1500; // Increased for simple interactions
     } else if (isAdviceQuestion) {
-      maxTokens = 3000;
+      maxTokens = 3000; // Reduced for complex advice to stay within limits
     } else if (isProductRequestType) {
-      maxTokens = 2000;
+      maxTokens = 2000; // Reduced for product recommendations
     } else if (messageCount > 10) {
-      maxTokens = 3000;
+      maxTokens = 3000; // Reduced for deep conversations
     } else {
-      maxTokens = 2000;
+      maxTokens = 2000; // Reduced for general conversation
     }
     
     console.log(`DEBUG: Context-aware token limit - Message count: ${messageCount}, Type: ${isAdviceQuestion ? 'advice' : isProductRequestType ? 'product' : isSimpleQuestion ? 'simple' : 'general'}, Max tokens: ${maxTokens}`);
     
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-3.5-turbo',
       messages,
       max_tokens: maxTokens,
     });
@@ -367,42 +359,30 @@ exports.handleChat = async (req, res) => {
         console.log('DEBUG: API Key exists:', !!apiKey);
         console.log('DEBUG: CSE ID exists:', !!cseId);
         
-        // First, try to extract brands from Jules's response that she just generated
-        const responseBrandMatch = reply.match(/(schott|allsaints|nike|adidas|levi|uniqlo|jcrew|ten thousand|lululemon)/i);
-        console.log('DEBUG: Response brand match:', responseBrandMatch);
-        
-        // Use the actual user message for search, not extracted content - prioritize current request
+        // Generate more specific search queries based on the user's request
         let searchQuery = message;
-        const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|schott|allsaints)/i);
+        const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
         const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
         
-        console.log('DEBUG: Brand match:', brandMatch);
-        console.log('DEBUG: Product match:', productMatch);
+        // Extract specific product details from the message
+        const colorMatch = message.match(/(brown|black|navy|blue|white|gray|grey|tan|beige|burgundy|oxford|dress|formal|casual)/i);
+        const typeMatch = message.match(/(oxford|loafer|brogue|derby|monk|strap|wingtip|cap-toe|plain-toe|dress|formal|casual)/i);
         
-        // Check for leather-specific requests
-        const isLeatherRequest = /leather/i.test(message);
-        
-        // Prioritize brands mentioned in Jules's response over user message
-        const finalBrandMatch = responseBrandMatch || brandMatch;
-        
-        if (finalBrandMatch && productMatch) {
-          if (isLeatherRequest) {
-            searchQuery = `${finalBrandMatch[0]} men's leather ${productMatch[0]} buy shop`;
-          } else {
-            searchQuery = `${finalBrandMatch[0]} men's ${productMatch[0]} buy shop`;
-          }
-        } else if (finalBrandMatch) {
-          if (isLeatherRequest) {
-            searchQuery = `${finalBrandMatch[0]} men's leather clothing buy shop`;
-          } else {
-            searchQuery = `${finalBrandMatch[0]} men's clothing buy shop`;
-          }
+        if (brandMatch && productMatch) {
+          searchQuery = `${brandMatch[0]} men's ${productMatch[0]} buy shop`;
+        } else if (brandMatch) {
+          searchQuery = `${brandMatch[0]} men's clothing buy shop`;
+        } else if (productMatch && colorMatch && typeMatch) {
+          // Most specific: product + color + type
+          searchQuery = `men's ${colorMatch[0]} ${typeMatch[0]} ${productMatch[0]} buy shop`;
+        } else if (productMatch && colorMatch) {
+          // Product + color
+          searchQuery = `men's ${colorMatch[0]} ${productMatch[0]} buy shop`;
+        } else if (productMatch && typeMatch) {
+          // Product + type
+          searchQuery = `men's ${typeMatch[0]} ${productMatch[0]} buy shop`;
         } else if (productMatch) {
-          if (isLeatherRequest) {
-            searchQuery = `men's leather ${productMatch[0]} buy shop`;
-          } else {
-            searchQuery = `men's ${productMatch[0]} buy shop`;
-          }
+          searchQuery = `men's ${productMatch[0]} buy shop`;
         } else {
           // Use the original message with "men's" prefix for better results
           searchQuery = `men's ${message} buy shop`;
@@ -421,9 +401,11 @@ exports.handleChat = async (req, res) => {
         });
         
         const forbidden = /women|woman|dress|gown|skirt|heels|female|bride|girl|girls|ladies|lady|kids|child|children/i;
+        const excludedBrands = /men's\s*wearhouse|mens\s*wearhouse|men\s*wearhouse/i;
         const nonProductSites = /youtube\.com|youtu\.be|reddit\.com|instagram\.com|facebook\.com|twitter\.com|tiktok\.com|pinterest\.com|blog|article|news|review|quora|economist|medium|substack|linkedin|tumblr/i;
         const searchProducts = (response.data.items || [])
           .filter(item => !forbidden.test(item.title + ' ' + (item.snippet || '')))
+          .filter(item => !excludedBrands.test(item.title + ' ' + (item.snippet || ''))) // Exclude Men's Wearhouse
           .filter(item => !nonProductSites.test(item.link))
           .filter(item => /shop|store|buy|product|item|clothing|apparel|fashion/i.test(item.title + ' ' + (item.snippet || ''))) // Only shopping/product sites
           .slice(0, 3)
@@ -462,7 +444,7 @@ exports.handleChat = async (req, res) => {
       
       // Use the user's message directly for search - prioritize current request over conversation context
       let searchQuery = message;
-      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon|schott|allsaints)/i);
+      const brandMatch = message.match(/(ten thousand|lululemon|nike|adidas|brooks|asics|levi|uniqlo|jcrew|target|amazon)/i);
       const productMatch = message.match(/(shorts|shoes|jacket|shirt|jeans|pants|sneakers|boots|suit|blazer|tie|belt|watch|accessory|coat|winter|casual|formal|dress|outfit)/i);
       
       if (brandMatch && productMatch) {
@@ -577,7 +559,7 @@ exports.productSearch = async (req, res) => {
   let searchQuery = query;
   try {
     const llmResult = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: "You are an expert menswear stylist. Given a product request, generate a Google search query that will return only real, reputable men's product links for that item. Focus on shopping sites and product pages. Examples: 'men's white sneakers buy shop', 'Ten Thousand shorts purchase', 'Lululemon men's workout gear shop'. Keep it simple and direct." },
         { role: 'user', content: query }

@@ -63,3 +63,38 @@ body {
 .soft-border-hover {
   border: 1px solid var(--border-hover);
 }
+
+/* Markdown styling for chat messages */
+.prose {
+  color: inherit;
+}
+
+.prose ul {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+  list-style-type: disc;
+}
+
+.prose li {
+  margin: 0.5em 0;
+  display: list-item;
+  line-height: 1.5;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.prose p {
+  margin: 0.5em 0;
+  white-space: pre-wrap;
+}
+
+.prose p:first-child {
+  margin-top: 0;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}

@@ -4,6 +4,7 @@ import { chat } from "@/lib/api";
 import Image from "next/image";
 import { jwtDecode } from 'jwt-decode';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 
 // Speech Recognition types
 declare global {
@@ -355,7 +356,9 @@ export default function Chat() {
                           animationDelay: `${chunkIndex * 0.1}s`
                         }}
                       >
-                        <div className="leading-relaxed">{chunk}</div>
+                        <div className="leading-relaxed prose prose-sm max-w-none">
+                          <ReactMarkdown>{chunk.replace(/- \*\*(.*?)\*\*:/g, '\n\n- **$1:**').replace(/([.!?])\s+-/g, '$1\n\n-')}</ReactMarkdown>
+                        </div>
                       </div>
                     ))}
                     
