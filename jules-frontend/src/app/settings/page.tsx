@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { onboarding } from '@/lib/api';
 
 interface UserProfile {
   userId: string;
@@ -63,28 +64,22 @@ export default function Settings() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/user-profile/${userId}`);
-      console.log('Profile response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Profile data received:', data);
-        setProfile(data);
-        setToneLevel(data.toneLevel || 2);
-        setName(data.name || '');
-        setJulesPersonality(data.settings?.julesPersonality || 2);
-        setAboutMe(data.settings?.aboutMe || '');
-        setBrands(data.preferences?.brands || '');
-        setHobbies(data.preferences?.hobbies || '');
-        setJobStatus(data.preferences?.jobStatus || '');
-        setRelationshipStatus(data.preferences?.relationshipStatus || '');
-        setLocation(data.preferences?.location || '');
-        setHeight(data.bodyInfo?.height || '');
-        setWeight(data.bodyInfo?.weight || '');
-        setTopSize(data.bodyInfo?.topSize || '');
-        setBottomSize(data.bodyInfo?.bottomSize || '');
-      } else {
-        console.log('Profile response not ok:', response.status, response.statusText);
-      }
+      const data = await onboarding.getOnboardingStatus(userId);
+      console.log('Profile data received:', data);
+      setProfile(data.user);
+      setToneLevel(data.user.settings?.julesPersonality || 2);
+      setName(data.user.name || '');
+      setJulesPersonality(data.user.settings?.julesPersonality || 2);
+      setAboutMe(data.user.settings?.aboutMe || '');
+      setBrands(data.user.preferences?.brands || '');
+      setHobbies(data.user.preferences?.hobbies || '');
+      setJobStatus(data.user.preferences?.jobStatus || '');
+      setRelationshipStatus(data.user.preferences?.relationshipStatus || '');
+      setLocation(data.user.preferences?.location || '');
+      setHeight(data.user.bodyInfo?.height || '');
+      setWeight(data.user.bodyInfo?.weight || '');
+      setTopSize(data.user.bodyInfo?.topSize || '');
+      setBottomSize(data.user.bodyInfo?.bottomSize || '');
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
@@ -98,39 +93,30 @@ export default function Settings() {
       const userId = getUserIdFromToken();
       if (!userId) return;
 
-      const response = await fetch(`/api/onboarding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const onboardingData = {
+        name,
+        settings: {
+          julesPersonality: toneLevel, // Use toneLevel instead of julesPersonality
+          aboutMe
         },
-        body: JSON.stringify({
-          userId,
-          onboardingData: {
-            name,
-            settings: {
-              julesPersonality,
-              aboutMe
-            },
-            preferences: {
-              brands,
-              hobbies,
-              jobStatus,
-              relationshipStatus,
-              location
-            },
-            bodyInfo: {
-              height,
-              weight,
-              topSize,
-              bottomSize
-            }
-          }
-        }),
-      });
+        preferences: {
+          brands,
+          hobbies,
+          jobStatus,
+          relationshipStatus,
+          location,
+          toneLevel // Also save toneLevel in preferences
+        },
+        bodyInfo: {
+          height,
+          weight,
+          topSize,
+          bottomSize
+        }
+      };
 
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.user);
+      const data = await onboarding.completeOnboarding(userId, onboardingData);
+      setProfile(data.user);
         // Show success feedback
         const saveButton = document.getElementById('save-button');
         if (saveButton) {
