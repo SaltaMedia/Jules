@@ -91,7 +91,13 @@ export default function Settings() {
     try {
       setSaving(true);
       const userId = getUserIdFromToken();
-      if (!userId) return;
+      if (!userId) {
+        console.error('No userId found');
+        return;
+      }
+
+      console.log('Saving settings for userId:', userId);
+      console.log('Settings data:', { name, toneLevel, aboutMe, brands, hobbies, jobStatus, relationshipStatus, location, height, weight, topSize, bottomSize });
 
       const onboardingData = {
         name,
@@ -115,23 +121,48 @@ export default function Settings() {
         }
       };
 
-      const data = await onboarding.completeOnboarding(userId, onboardingData);
+      console.log('Calling onboarding.completeOnboarding with:', onboardingData);
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
+      });
+      
+      const data = await Promise.race([
+        onboarding.completeOnboarding(userId, onboardingData),
+        timeoutPromise
+      ]);
+      
+      console.log('Settings saved successfully:', data);
       setProfile(data.user);
+      
       // Show success feedback
       const saveButton = document.getElementById('save-button');
       if (saveButton) {
-        const originalText = saveButton.textContent;
         saveButton.textContent = 'Saved!';
         saveButton.className = 'px-4 py-2 bg-green-500 text-white rounded-lg font-medium transition-colors';
         setTimeout(() => {
-          saveButton.textContent = originalText;
+          saveButton.textContent = 'Save Settings';
           saveButton.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors';
         }, 2000);
+      } else {
+        console.log('Save button not found for success feedback');
       }
     } catch (error) {
       console.error('Error saving settings:', error);
+      // Show error feedback
+      const saveButton = document.getElementById('save-button');
+      if (saveButton) {
+        saveButton.textContent = 'Error!';
+        saveButton.className = 'px-4 py-2 bg-red-500 text-white rounded-lg font-medium transition-colors';
+        setTimeout(() => {
+          saveButton.textContent = 'Save Settings';
+          saveButton.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors';
+        }, 2000);
+      }
     } finally {
       setSaving(false);
+      console.log('Save operation completed, setSaving(false) called');
     }
   };
 
