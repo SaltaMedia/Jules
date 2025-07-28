@@ -21,7 +21,7 @@ console.log('Starting server...');
 // === FORCE RESTART TEST ===
 console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
 console.log('🚨🚨🚨 Server started at:', new Date().toISOString());
-console.log('🚨🚨🚨 Git commit: 4250730 - FORCE DEPLOY WITH PERSONALITY FIX');
+            console.log('🚨🚨🚨 Git commit: 6f2794a - STICKY LAYOUT + PERSONALITY FIX');
 console.log('🚨🚨🚨 THIS SHOULD BE THE LATEST COMMIT - IF YOU SEE OLD COMMIT, DEPLOYMENT IS BROKEN');
 console.log('🚨🚨🚨 FORCE_RESTART env var:', process.env.FORCE_RESTART);
 console.log('🚨🚨🚨 RESTART_TRIGGER env var:', process.env.RESTART_TRIGGER);
@@ -141,8 +141,8 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    version: 'ONBOARDING FEATURES v2.3',
-    commit: '60c456a'
+    version: 'STICKY LAYOUT + PERSONALITY FIX v2.4',
+    commit: '6f2794a'
   });
 });
 
