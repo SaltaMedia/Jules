@@ -32,7 +32,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [toneLevel, setToneLevel] = useState(2);
   const [name, setName] = useState('');
-  const [julesPersonality, setJulesPersonality] = useState(2);
+  const [julesPersonality, setJulesPersonality] = useState(2); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [aboutMe, setAboutMe] = useState('');
   const [brands, setBrands] = useState('');
   const [hobbies, setHobbies] = useState('');
