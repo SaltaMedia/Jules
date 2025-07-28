@@ -21,7 +21,8 @@ console.log('Starting server...');
 // === FORCE RESTART TEST ===
 console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
 console.log('🚨🚨🚨 Server started at:', new Date().toISOString());
-console.log('🚨🚨🚨 Git commit: e4c5b4f - PERSONALITY FIX: Tone level now saves to preferences');
+console.log('🚨🚨🚨 Git commit: 4250730 - FORCE DEPLOY WITH PERSONALITY FIX');
+console.log('🚨🚨🚨 THIS SHOULD BE THE LATEST COMMIT - IF YOU SEE OLD COMMIT, DEPLOYMENT IS BROKEN');
 console.log('🚨🚨🚨 FORCE_RESTART env var:', process.env.FORCE_RESTART);
 console.log('🚨🚨🚨 RESTART_TRIGGER env var:', process.env.RESTART_TRIGGER);
 console.log('🚨🚨🚨 DEPLOYMENT_TIMESTAMP env var:', process.env.DEPLOYMENT_TIMESTAMP);
