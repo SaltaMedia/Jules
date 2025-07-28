@@ -29,7 +29,8 @@ exports.completeOnboarding = async (req, res) => {
           hobbies: onboardingData.preferences?.hobbies || '',
           jobStatus: onboardingData.preferences?.jobStatus || '',
           relationshipStatus: onboardingData.preferences?.relationshipStatus || '',
-          location: onboardingData.preferences?.location || ''
+          location: onboardingData.preferences?.location || '',
+          toneLevel: onboardingData.settings?.julesPersonality || 2 // Also save toneLevel in preferences
         },
         bodyInfo: {
           height: onboardingData.bodyInfo?.height || '',

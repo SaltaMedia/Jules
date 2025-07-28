@@ -21,7 +21,7 @@ console.log('Starting server...');
 // === FORCE RESTART TEST ===
 console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
 console.log('🚨🚨🚨 Server started at:', new Date().toISOString());
-console.log('🚨🚨🚨 Git commit: 74c35c0 - FINAL ONBOARDING DEPLOYMENT');
+console.log('🚨🚨🚨 Git commit: c454c9b - FRONTEND ESLINT FIX + ONBOARDING DEPLOYMENT');
 console.log('🚨🚨🚨 FORCE_RESTART env var:', process.env.FORCE_RESTART);
 console.log('🚨🚨🚨 RESTART_TRIGGER env var:', process.env.RESTART_TRIGGER);
 console.log('🚨🚨🚨 DEPLOYMENT_TIMESTAMP env var:', process.env.DEPLOYMENT_TIMESTAMP);
