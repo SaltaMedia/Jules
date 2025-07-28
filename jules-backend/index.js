@@ -21,10 +21,11 @@ console.log('Starting server...');
 // === FORCE RESTART TEST ===
 console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
 console.log('🚨🚨🚨 Server started at:', new Date().toISOString());
-console.log('🚨🚨🚨 Git commit: c454c9b - FRONTEND ESLINT FIX + ONBOARDING DEPLOYMENT');
+console.log('🚨🚨🚨 Git commit: e4c5b4f - PERSONALITY FIX: Tone level now saves to preferences');
 console.log('🚨🚨🚨 FORCE_RESTART env var:', process.env.FORCE_RESTART);
 console.log('🚨🚨🚨 RESTART_TRIGGER env var:', process.env.RESTART_TRIGGER);
 console.log('🚨🚨🚨 DEPLOYMENT_TIMESTAMP env var:', process.env.DEPLOYMENT_TIMESTAMP);
+console.log('🚨🚨🚨 PERSONALITY_FIX env var:', process.env.PERSONALITY_FIX);
 console.log('🚨🚨🚨 Process ID:', process.pid);
 console.log('🚨🚨🚨 Node version:', process.version);
 console.log('🚨🚨🚨 Current timestamp:', new Date().toISOString());
