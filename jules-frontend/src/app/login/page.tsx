@@ -34,7 +34,7 @@ function LoginInner() {
         // Check onboarding status after login
         const token = localStorage.getItem('token');
         if (token) {
-          const decoded: any = jwtDecode(token);
+          const decoded: { userId: string } = jwtDecode(token);
           const userId = decoded.userId;
           
           if (userId) {

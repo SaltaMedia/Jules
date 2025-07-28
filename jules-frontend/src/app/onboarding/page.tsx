@@ -66,7 +66,7 @@ export default function Onboarding() {
     }
 
     try {
-      const decoded: any = jwtDecode(token);
+      const decoded: { userId: string } = jwtDecode(token);
       setUserId(decoded.userId);
     } catch (error) {
       console.error('Error decoding token:', error);
@@ -74,11 +74,11 @@ export default function Onboarding() {
     }
   }, [router]);
 
-  const updateOnboardingData = (field: string, value: any) => {
+  const updateOnboardingData = (field: string, value: string | number) => {
     setOnboardingData(prev => {
       const newData = { ...prev };
       const keys = field.split('.');
-      let current: any = newData;
+      let current: Record<string, any> = newData;
       
       for (let i = 0; i < keys.length - 1; i++) {
         current = current[keys[i]];
@@ -163,7 +163,7 @@ export default function Onboarding() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">How would you like Jules to interact with you?</h2>
-                <p className="text-gray-600">Choose Jules' personality style</p>
+                <p className="text-gray-600">Choose Jules&apos; personality style</p>
               </div>
               <div className="space-y-4">
                 {[

@@ -7,7 +7,7 @@ interface UserProfile {
   userId: string;
   name: string;
   toneLevel: number;
-  preferences: any;
+  preferences: Record<string, any>;
   settings: {
     julesPersonality: number;
     aboutMe: string;
@@ -26,7 +26,7 @@ const topSizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const bottomSizeOptions = ['28', '29', '30', '31', '32', '33', '34', '35', '36', '38', '40', '42'];
 
 export default function Settings() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toneLevel, setToneLevel] = useState(2);

@@ -91,7 +91,7 @@ export default function Chat() {
   const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [isListening, setIsListening] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
@@ -107,7 +107,7 @@ export default function Chat() {
         try {
           const parsedMessages = JSON.parse(savedMessages);
           // Convert timestamp strings back to Date objects
-          const messagesWithDates = parsedMessages.map((msg: any) => ({
+          const messagesWithDates = parsedMessages.map((msg: { timestamp: string; [key: string]: any }) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }));

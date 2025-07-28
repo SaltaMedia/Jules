@@ -180,7 +180,7 @@ export const upload = {
 
 // Onboarding API calls
 export const onboarding = {
-  completeOnboarding: async (userId: string, onboardingData: any) => {
+  completeOnboarding: async (userId: string, onboardingData: Record<string, any>) => {
     return apiRequest('/api/onboarding', {
       method: 'POST',
       body: JSON.stringify({ userId, onboardingData }),

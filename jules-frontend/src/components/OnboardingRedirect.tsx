@@ -24,7 +24,7 @@ export default function OnboardingRedirect({ children }: OnboardingRedirectProps
           return;
         }
 
-        const decoded: any = jwtDecode(token);
+        const decoded: { userId: string } = jwtDecode(token);
         const userId = decoded.userId;
 
         if (!userId) {

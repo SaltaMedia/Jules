@@ -19,7 +19,7 @@ function AuthCallbackInner() {
       // Check onboarding status
       const checkOnboarding = async () => {
         try {
-          const decoded: any = jwtDecode(token);
+          const decoded: { userId: string } = jwtDecode(token);
           const userId = decoded.userId;
           
           if (userId) {
