@@ -117,17 +117,16 @@ export default function Settings() {
 
       const data = await onboarding.completeOnboarding(userId, onboardingData);
       setProfile(data.user);
-        // Show success feedback
-        const saveButton = document.getElementById('save-button');
-        if (saveButton) {
-          const originalText = saveButton.textContent;
-          saveButton.textContent = 'Saved!';
-          saveButton.className = 'px-4 py-2 bg-green-500 text-white rounded-lg font-medium transition-colors';
-          setTimeout(() => {
-            saveButton.textContent = originalText;
-            saveButton.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors';
-          }, 2000);
-        }
+      // Show success feedback
+      const saveButton = document.getElementById('save-button');
+      if (saveButton) {
+        const originalText = saveButton.textContent;
+        saveButton.textContent = 'Saved!';
+        saveButton.className = 'px-4 py-2 bg-green-500 text-white rounded-lg font-medium transition-colors';
+        setTimeout(() => {
+          saveButton.textContent = originalText;
+          saveButton.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors';
+        }, 2000);
       }
     } catch (error) {
       console.error('Error saving settings:', error);
