@@ -21,7 +21,8 @@ console.log('Starting server...');
 // === FORCE RESTART TEST ===
 console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
 console.log('🚨🚨🚨 Server started at:', new Date().toISOString());
-console.log('🚨🚨🚨 Git commit: 22c5b7e - FORCE DEPLOYMENT TEST');
+console.log('🚨🚨🚨 Git commit: c9f0304 - NODE.JS UPGRADED + ONBOARDING FEATURES');
+console.log('🚨🚨🚨 FORCE_RESTART env var:', process.env.FORCE_RESTART);
 console.log('🚨🚨🚨 === FORCE RESTART TEST END ===');
 
 const express = require('express');
@@ -130,7 +131,12 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    version: 'ONBOARDING FEATURES v2.3',
+    commit: '60c456a'
+  });
 });
 
 // Error handling middleware
