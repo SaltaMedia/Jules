@@ -267,7 +267,7 @@ export default function Chat() {
           : 'bg-gray-50 text-gray-900'
       }`}>
       {/* Header - 8-point grid spacing */}
-      <header className={`px-4 py-3 flex items-center justify-between shadow-sm transition-colors duration-300 ${
+      <header className={`sticky top-0 z-10 px-4 py-3 flex items-center justify-between shadow-sm transition-colors duration-300 ${
         isDarkMode 
           ? 'bg-gray-900/80 backdrop-blur border-gray-800' 
           : 'bg-white/80 backdrop-blur border-gray-200'
@@ -476,7 +476,7 @@ export default function Chat() {
       </div>
 
       {/* Input Bar - Fixed at bottom */}
-      <div className={`px-4 py-3 border-t transition-colors duration-300 ${
+      <div className={`sticky bottom-0 z-10 px-4 py-3 border-t transition-colors duration-300 ${
         isDarkMode 
           ? 'bg-gray-900/80 backdrop-blur border-gray-800' 
           : 'bg-gray-50/80 backdrop-blur border-gray-200'

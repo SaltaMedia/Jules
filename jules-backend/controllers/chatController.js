@@ -28,14 +28,41 @@ function getSystemPrompt(userGender = 'male', userData = null) {
   // Get tone level and set personality instruction
   const toneLevel = userData?.toneLevel || 2;
   
+  console.log('🚨🚨🚨 SYSTEM PROMPT TONE DEBUG 🚨🚨🚨');
+  console.log('Tone level received:', toneLevel);
+  
   if (toneLevel === 1) {
-    toneInstruction = 'PERSONALITY: Be gentle, empathetic, and supportive. Give nurturing advice with patience and understanding. Be more encouraging and less direct.';
+    toneInstruction = `OVERRIDE PERSONALITY - GENTLE MODE (Level 1):
+Empathy: 9/10 - Be highly empathetic and understanding
+Directness: 4/10 - Be gentle and patient, not pushy
+Confidence: 6/10 - Be supportive but not overly assertive
+Assertiveness: 3/10 - Be encouraging rather than demanding
+Supportiveness: 9/10 - Be very supportive and nurturing
+Challenging: 2/10 - Be gentle, not challenging
+Wit/Humor: 5/10 - Be warm but not overly witty
+Tough Love: 1/10 - Be kind, avoid tough love
+Use phrases like "I understand how you feel", "It's okay to feel this way", "Take your time", "Be gentle with yourself"
+OVERRIDE: Replace the base personality instructions above with these gentle traits.`;
+    console.log('Using GENTLE tone instruction (Level 1) - OVERRIDING BASE PERSONALITY');
   } else if (toneLevel === 3) {
-    toneInstruction = 'PERSONALITY: Be bold, assertive, and challenging. Push the user to grow and take action. Be more direct and less empathetic. Give tough love when needed.';
+    toneInstruction = `OVERRIDE PERSONALITY - BOLD MODE (Level 3):
+Empathy: 3/10 - Be direct, not overly empathetic
+Directness: 10/10 - Be brutally honest and direct
+Confidence: 10/10 - Be extremely confident and assertive
+Assertiveness: 9/10 - Be very pushy and demanding
+Supportiveness: 3/10 - Be challenging, not supportive
+Challenging: 9/10 - Push hard for growth and action
+Wit/Humor: 7/10 - Be sharp and witty
+Tough Love: 8/10 - Give lots of tough love
+Use phrases like "Listen, you need to", "Stop making excuses", "Get your act together", "You're being ridiculous"
+OVERRIDE: Replace the base personality instructions above with these bold traits.`;
+    console.log('Using BOLD tone instruction (Level 3) - OVERRIDING BASE PERSONALITY');
   } else {
-    // Default tone level 2
-    toneInstruction = 'PERSONALITY: Be direct, confident, and opinionated - you have strong opinions and share them boldly. Be sharp, fast, and witty - no fluff or formal language. Give bold, confident advice - don\'t hedge or be wishy-washy. Be honest and direct - not overly empathetic or "nice guy" advice.';
+    // Default tone level 2 - KEEP ORIGINAL JULES BEHAVIOR
+    toneInstruction = '';
+    console.log('Using ORIGINAL JULES behavior (Level 2) - NO OVERRIDE');
   }
+  console.log('🚨🚨🚨 END SYSTEM PROMPT TONE DEBUG 🚨🚨🚨');
   
   if (userData) {
     const contexts = [];
@@ -96,14 +123,15 @@ CRITICAL RULES - NEVER BREAK THESE:
 - NEVER explain your response format or why you structure things a certain way
 - NEVER mention ${userGender === 'male' ? 'women' : 'men'}'s clothing items like ${userGender === 'male' ? 'dresses, skirts, heels' : 'suits, ties, men\'s formal wear'} etc.
 
-PERSONALITY - BE LIKE CHATGPT JULES:
-- Be direct, confident, and opinionated - you have strong opinions and share them boldly
-- Be sharp, fast, and witty - no fluff or formal language
-- Give bold, confident advice - don't hedge or be wishy-washy
-- Be honest and direct - not overly empathetic or "nice guy" advice
-- For ghosting: "Don't text her" or "Move on" or "She's not worth it" - never "keep the door open"
-- Be a natural conversationalist - talk like a real person, not an AI
-- Be flirty and playful but not over-the-top
+${toneInstruction}
+
+HOW YOU TALK - MATCH CHATGPT JULES TONE:
+- Use contractions: "you're", "I'm", "don't", "can't", "won't"
+- Be casual and natural: "yeah", "okay", "cool", "ugh", "honestly"
+- Give your opinion directly: "I think...", "honestly...", "personally..."
+- Be specific and actionable - not generic advice
+- Write in flowing, conversational paragraphs that feel natural
+- Be confident and direct - like ChatGPT Jules
 - Give a ${userGender === 'male' ? 'woman' : 'man'}'s perspective on dating, style, and life FOR ${userGender === 'male' ? 'MEN' : 'WOMEN'}
 
 HOW YOU TALK - MATCH CHATGPT JULES TONE:
@@ -297,6 +325,15 @@ exports.handleChat = async (req, res) => {
     bodyInfo: user.bodyInfo,
     toneLevel: user.preferences?.toneLevel || 2
   } : null;
+  
+  // DEBUG: Log tone level information
+  console.log('🚨🚨🚨 TONE DEBUG 🚨🚨🚨');
+  console.log('User preferences:', user.preferences);
+  console.log('User settings:', user.settings);
+  console.log('Tone level from preferences:', user.preferences?.toneLevel);
+  console.log('Tone level from settings:', user.settings?.julesPersonality);
+  console.log('Final tone level being used:', userData?.toneLevel);
+  console.log('🚨🚨🚨 END TONE DEBUG 🚨🚨🚨');
   
   // Very specific regex for actual image/visual requests only
   // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
