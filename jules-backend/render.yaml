@@ -10,5 +10,7 @@ services:
       - key: FORCE_RESTART
         value: "true"
       - key: RESTART_TRIGGER
-        value: "ae55075"
+        value: "74c35c0"
+      - key: DEPLOYMENT_TIMESTAMP
+        value: "2025-07-28-12-00"
     healthCheckPath: /healthz 
