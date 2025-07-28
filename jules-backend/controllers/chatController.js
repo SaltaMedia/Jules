@@ -20,9 +20,69 @@ function detectGenderContext(message) {
   return null;
 }
 
-// Function to get gender-specific system prompt
-function getSystemPrompt(userGender = 'male') {
-  const basePrompt = `You are Jules — a confident, stylish friend who helps ${userGender === 'male' ? 'MEN' : 'WOMEN'} with dating, style, and life advice. You're like a cool older ${userGender === 'male' ? 'sister' : 'brother'} who tells it like it is.
+// Function to get gender-specific system prompt with user data
+function getSystemPrompt(userGender = 'male', userData = null) {
+  let userContext = '';
+  let toneInstruction = '';
+  
+  // Get tone level and set personality instruction
+  const toneLevel = userData?.toneLevel || 2;
+  
+  if (toneLevel === 1) {
+    toneInstruction = 'PERSONALITY: Be gentle, empathetic, and supportive. Give nurturing advice with patience and understanding. Be more encouraging and less direct.';
+  } else if (toneLevel === 3) {
+    toneInstruction = 'PERSONALITY: Be bold, assertive, and challenging. Push the user to grow and take action. Be more direct and less empathetic. Give tough love when needed.';
+  } else {
+    // Default tone level 2
+    toneInstruction = 'PERSONALITY: Be direct, confident, and opinionated - you have strong opinions and share them boldly. Be sharp, fast, and witty - no fluff or formal language. Give bold, confident advice - don\'t hedge or be wishy-washy. Be honest and direct - not overly empathetic or "nice guy" advice.';
+  }
+  
+  if (userData) {
+    const contexts = [];
+    
+    if (userData.name) {
+      contexts.push(`The user's name is ${userData.name}.`);
+    }
+    
+    if (userData.settings?.aboutMe) {
+      contexts.push(`About them: ${userData.settings.aboutMe}`);
+    }
+    
+    if (userData.preferences?.brands) {
+      contexts.push(`They like these brands: ${userData.preferences.brands}`);
+    }
+    
+    if (userData.preferences?.hobbies) {
+      contexts.push(`They enjoy: ${userData.preferences.hobbies}`);
+    }
+    
+    if (userData.preferences?.jobStatus) {
+      contexts.push(`Job situation: ${userData.preferences.jobStatus}`);
+    }
+    
+    if (userData.preferences?.relationshipStatus) {
+      contexts.push(`Relationship status: ${userData.preferences.relationshipStatus}`);
+    }
+    
+    if (userData.preferences?.location) {
+      contexts.push(`Location: ${userData.preferences.location}`);
+    }
+    
+    if (userData.bodyInfo?.height || userData.bodyInfo?.weight || userData.bodyInfo?.topSize || userData.bodyInfo?.bottomSize) {
+      const bodyInfo = [];
+      if (userData.bodyInfo.height) bodyInfo.push(`height: ${userData.bodyInfo.height}`);
+      if (userData.bodyInfo.weight) bodyInfo.push(`weight: ${userData.bodyInfo.weight}`);
+      if (userData.bodyInfo.topSize) bodyInfo.push(`top size: ${userData.bodyInfo.topSize}`);
+      if (userData.bodyInfo.bottomSize) bodyInfo.push(`bottom size: ${userData.bodyInfo.bottomSize}`);
+      contexts.push(`Body info: ${bodyInfo.join(', ')}`);
+    }
+    
+    if (contexts.length > 0) {
+      userContext = `\n\nUSER CONTEXT:\n${contexts.join(' ')}`;
+    }
+  }
+  
+  const basePrompt = `You are Jules — a confident, stylish friend who helps ${userGender === 'male' ? 'MEN' : 'WOMEN'} with dating, style, and life advice. You're like a cool older ${userGender === 'male' ? 'sister' : 'brother'} who tells it like it is.${userContext}
 
 CRITICAL RULES - NEVER BREAK THESE:
 - ALWAYS assume you're talking to a ${userGender === 'male' ? 'MAN' : 'WOMAN'} - never give ${userGender === 'male' ? 'women' : 'men'}'s fashion advice
@@ -229,6 +289,15 @@ exports.handleChat = async (req, res) => {
   const userGender = (user.preferences && user.preferences.gender) || 'male';
   console.log(`DEBUG: Using gender context: ${userGender} (defaults to male unless explicitly stated otherwise)`);
   
+  // Prepare user data for system prompt
+  const userData = user._id ? {
+    name: user.name,
+    settings: user.settings,
+    preferences: user.preferences,
+    bodyInfo: user.bodyInfo,
+    toneLevel: user.preferences?.toneLevel || 2
+  } : null;
+  
   // Very specific regex for actual image/visual requests only
   // Matches: pic, pics, picture, pictures, image, images, visual, visuals, what does it look like, outfit examples, etc.
   // But NOT: show me links, show me products, etc.
@@ -293,9 +362,9 @@ exports.handleChat = async (req, res) => {
       recentMessages = [{ role: 'user', content: message }];
     }
     
-    // Jules's authentic personality - using gender-specific context
+    // Jules's authentic personality - using gender-specific context and user data
     const messages = [
-      { role: 'system', content: getSystemPrompt(userGender) },
+      { role: 'system', content: getSystemPrompt(userGender, userData) },
       ...recentMessages
     ];
     

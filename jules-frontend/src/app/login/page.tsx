@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { auth } from "@/lib/api";
+import { auth, onboarding } from "@/lib/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from 'next/link';
+import { jwtDecode } from 'jwt-decode';
 
 function LoginInner() {
   const [isLogin, setIsLogin] = useState(true);
@@ -30,10 +31,29 @@ function LoginInner() {
     try {
       if (isLogin) {
         await auth.login(email, password);
-        router.push("/chat");
+        // Check onboarding status after login
+        const token = localStorage.getItem('token');
+        if (token) {
+          const decoded: any = jwtDecode(token);
+          const userId = decoded.userId;
+          
+          if (userId) {
+            const response = await onboarding.getOnboardingStatus(userId);
+            if (response.isOnboarded) {
+              router.push('/chat');
+            } else {
+              router.push('/onboarding');
+            }
+          } else {
+            router.push('/chat');
+          }
+        } else {
+          router.push('/chat');
+        }
       } else {
         await auth.register(email, password, name);
-        router.push("/chat");
+        // New users should go to onboarding
+        router.push("/onboarding");
       }
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'message' in error && typeof (error as { message?: string }).message === 'string') {

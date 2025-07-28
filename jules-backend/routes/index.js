@@ -14,6 +14,7 @@ const uploadRoutes = require('./upload');
 const productsRoutes = require('./products');
 const adminRoutes = require('./admin');
 const logsRoutes = require('./logs');
+const onboardingRoutes = require('./onboarding');
 
 // Mount all routes
 router.use('/chat', chatRoutes);
@@ -28,5 +29,6 @@ router.use('/upload', uploadRoutes);
 router.use('/products', productsRoutes);
 router.use('/admin', adminRoutes);
 router.use('/logs', logsRoutes);
+router.use('/onboarding', onboardingRoutes);
 
 module.exports = router; 

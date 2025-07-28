@@ -5,6 +5,7 @@ import Image from "next/image";
 import { jwtDecode } from 'jwt-decode';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import OnboardingRedirect from '@/components/OnboardingRedirect';
 
 // Speech Recognition types
 declare global {
@@ -100,7 +101,24 @@ export default function Chat() {
   // Initialize messages after component mounts to avoid hydration issues
   useEffect(() => {
     if (!isInitialized) {
-      setMessages([]);
+      // Load messages from localStorage to preserve chat session
+      const savedMessages = localStorage.getItem('chatMessages');
+      if (savedMessages) {
+        try {
+          const parsedMessages = JSON.parse(savedMessages);
+          // Convert timestamp strings back to Date objects
+          const messagesWithDates = parsedMessages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(messagesWithDates);
+        } catch (error) {
+          console.error('Error loading saved messages:', error);
+          setMessages([]);
+        }
+      } else {
+        setMessages([]);
+      }
       setIsInitialized(true);
     }
   }, [isInitialized]);
@@ -139,6 +157,10 @@ export default function Chat() {
 
   useEffect(() => {
     scrollToBottom();
+    // Save messages to localStorage to preserve chat session
+    if (messages.length > 0) {
+      localStorage.setItem('chatMessages', JSON.stringify(messages));
+    }
   }, [messages]);
 
   // Load voices
@@ -238,11 +260,12 @@ export default function Chat() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
-      isDarkMode 
-        ? 'bg-[#121212] text-gray-100' 
-        : 'bg-gray-50 text-gray-900'
-    }`}>
+    <OnboardingRedirect>
+      <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-[#121212] text-gray-100' 
+          : 'bg-gray-50 text-gray-900'
+      }`}>
       {/* Header - 8-point grid spacing */}
       <header className={`px-4 py-3 flex items-center justify-between shadow-sm transition-colors duration-300 ${
         isDarkMode 
@@ -547,6 +570,7 @@ export default function Chat() {
       <div ref={messagesEndRef} />
 
 
-    </div>
+      </div>
+    </OnboardingRedirect>
   );
 }

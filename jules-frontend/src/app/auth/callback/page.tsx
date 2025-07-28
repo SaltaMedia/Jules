@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { jwtDecode } from 'jwt-decode';
+import { onboarding } from '@/lib/api';
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -11,9 +13,32 @@ function AuthCallbackInner() {
     const error = searchParams.get('error');
 
     if (token) {
-      // Store the JWT token and redirect to chat
+      // Store the JWT token
       localStorage.setItem('token', token);
-      router.push('/chat');
+      
+      // Check onboarding status
+      const checkOnboarding = async () => {
+        try {
+          const decoded: any = jwtDecode(token);
+          const userId = decoded.userId;
+          
+          if (userId) {
+            const response = await onboarding.getOnboardingStatus(userId);
+            if (response.isOnboarded) {
+              router.push('/chat');
+            } else {
+              router.push('/onboarding');
+            }
+          } else {
+            router.push('/chat');
+          }
+        } catch (error) {
+          console.error('Error checking onboarding status:', error);
+          router.push('/chat');
+        }
+      };
+      
+      checkOnboarding();
     } else if (error) {
       // Redirect to login with error
       router.push(`/login?error=${encodeURIComponent(error)}`);

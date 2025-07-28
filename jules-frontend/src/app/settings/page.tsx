@@ -2,19 +2,46 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 
 interface UserProfile {
   userId: string;
+  name: string;
   toneLevel: number;
   preferences: any;
+  settings: {
+    julesPersonality: number;
+    aboutMe: string;
+  };
+  bodyInfo: {
+    height: string;
+    weight: string;
+    topSize: string;
+    bottomSize: string;
+  };
 }
+
+const jobStatusOptions = ['Corporate', 'Freelance', 'Student', 'WFH', 'Other'];
+const relationshipStatusOptions = ['Single', 'Dating', 'Married', 'Divorced'];
+const topSizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const bottomSizeOptions = ['28', '29', '30', '31', '32', '33', '34', '35', '36', '38', '40', '42'];
 
 export default function Settings() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toneLevel, setToneLevel] = useState(2);
+  const [name, setName] = useState('');
+  const [julesPersonality, setJulesPersonality] = useState(2);
+  const [aboutMe, setAboutMe] = useState('');
+  const [brands, setBrands] = useState('');
+  const [hobbies, setHobbies] = useState('');
+  const [jobStatus, setJobStatus] = useState('');
+  const [relationshipStatus, setRelationshipStatus] = useState('');
+  const [location, setLocation] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+  const [topSize, setTopSize] = useState('');
+  const [bottomSize, setBottomSize] = useState('');
 
   const toneDescriptions = {
     1: "Gentle & Supportive - Jules will be more empathetic and nurturing",
@@ -29,16 +56,34 @@ export default function Settings() {
   const loadUserProfile = async () => {
     try {
       const userId = getUserIdFromToken();
+      console.log('Loading profile for userId:', userId);
       if (!userId) {
+        console.log('No userId found');
         setLoading(false);
         return;
       }
 
-      const response = await fetch(`/api/user-profile/${userId}`);
+      const response = await fetch(`http://localhost:4000/api/user-profile/${userId}`);
+      console.log('Profile response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('Profile data received:', data);
         setProfile(data);
         setToneLevel(data.toneLevel || 2);
+        setName(data.name || '');
+        setJulesPersonality(data.settings?.julesPersonality || 2);
+        setAboutMe(data.settings?.aboutMe || '');
+        setBrands(data.preferences?.brands || '');
+        setHobbies(data.preferences?.hobbies || '');
+        setJobStatus(data.preferences?.jobStatus || '');
+        setRelationshipStatus(data.preferences?.relationshipStatus || '');
+        setLocation(data.preferences?.location || '');
+        setHeight(data.bodyInfo?.height || '');
+        setWeight(data.bodyInfo?.weight || '');
+        setTopSize(data.bodyInfo?.topSize || '');
+        setBottomSize(data.bodyInfo?.bottomSize || '');
+      } else {
+        console.log('Profile response not ok:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -47,23 +92,45 @@ export default function Settings() {
     }
   };
 
-  const saveToneLevel = async () => {
+  const saveSettings = async () => {
     try {
       setSaving(true);
       const userId = getUserIdFromToken();
       if (!userId) return;
 
-      const response = await fetch(`/api/user-profile/${userId}`, {
+      const response = await fetch(`/api/onboarding`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ toneLevel }),
+        body: JSON.stringify({
+          userId,
+          onboardingData: {
+            name,
+            settings: {
+              julesPersonality,
+              aboutMe
+            },
+            preferences: {
+              brands,
+              hobbies,
+              jobStatus,
+              relationshipStatus,
+              location
+            },
+            bodyInfo: {
+              height,
+              weight,
+              topSize,
+              bottomSize
+            }
+          }
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setProfile(data.profile);
+        setProfile(data.user);
         // Show success feedback
         const saveButton = document.getElementById('save-button');
         if (saveButton) {
@@ -77,7 +144,7 @@ export default function Settings() {
         }
       }
     } catch (error) {
-      console.error('Error saving tone level:', error);
+      console.error('Error saving settings:', error);
     } finally {
       setSaving(false);
     }
@@ -85,11 +152,13 @@ export default function Settings() {
 
   function getUserIdFromToken() {
     if (typeof window === 'undefined') return null;
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('token');
+    console.log('Token from localStorage:', token ? 'exists' : 'not found');
     if (!token) return null;
     
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('Token payload:', payload);
       return payload.userId;
     } catch (error) {
       console.error('Error parsing token:', error);
@@ -169,11 +238,153 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* Personal Information */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">About Me</label>
+                <textarea
+                  value={aboutMe}
+                  onChange={(e) => setAboutMe(e.target.value)}
+                  rows={3}
+                  placeholder="Tell Jules a little about yourself..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Style Preferences */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Style Preferences</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Brands you like</label>
+                <input
+                  type="text"
+                  value={brands}
+                  onChange={(e) => setBrands(e.target.value)}
+                  placeholder="e.g., Nike, Buck Mason"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">What you do for fun</label>
+                <input
+                  type="text"
+                  value={hobbies}
+                  onChange={(e) => setHobbies(e.target.value)}
+                  placeholder="e.g., golf, weekend hikes"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Job situation</label>
+                <select
+                  value={jobStatus}
+                  onChange={(e) => setJobStatus(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                >
+                  <option value="">Select job status</option>
+                  {jobStatusOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Relationship status</label>
+                <select
+                  value={relationshipStatus}
+                  onChange={(e) => setRelationshipStatus(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                >
+                  <option value="">Select relationship status</option>
+                  {relationshipStatusOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g., Portland, OR"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Body Information */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Body Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Height</label>
+                <input
+                  type="text"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder="e.g., 5'10&quot;"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Weight</label>
+                <input
+                  type="text"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="e.g., 170 lbs"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Typical top size</label>
+                <select
+                  value={topSize}
+                  onChange={(e) => setTopSize(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                >
+                  <option value="">Select top size</option>
+                  {topSizeOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Typical bottom size</label>
+                <select
+                  value={bottomSize}
+                  onChange={(e) => setBottomSize(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                >
+                  <option value="">Select bottom size</option>
+                  {bottomSizeOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* Save Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-6">
             <button
               id="save-button"
-              onClick={saveToneLevel}
+              onClick={saveSettings}
               disabled={saving}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >

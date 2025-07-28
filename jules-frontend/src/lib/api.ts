@@ -176,4 +176,20 @@ export const upload = {
       throw error;
     }
   },
+};
+
+// Onboarding API calls
+export const onboarding = {
+  completeOnboarding: async (userId: string, onboardingData: any) => {
+    return apiRequest('/api/onboarding', {
+      method: 'POST',
+      body: JSON.stringify({ userId, onboardingData }),
+    });
+  },
+  
+  getOnboardingStatus: async (userId: string) => {
+    return apiRequest(`/api/onboarding/${userId}`, {
+      method: 'GET',
+    });
+  },
 }; 

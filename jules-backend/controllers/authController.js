@@ -18,7 +18,11 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'Email already in use.' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword });
+    const user = new User({ 
+      email, 
+      password: hashedPassword,
+      isOnboarded: false 
+    });
     await user.save();
     res.status(201).json({ message: 'User registered successfully.' });
   } catch (err) {
@@ -40,7 +44,7 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ error: 'Invalid credentials.' });
     }
-    const token = jwt.sign({ userId: user._id, email: user.email, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user._id, email: user.email, isAdmin: user.isAdmin }, getJWTSecret(), { expiresIn: '7d' });
     res.json({ token });
   } catch (err) {
     res.status(500).json({ error: 'Login failed.' });

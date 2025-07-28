@@ -17,8 +17,11 @@ router.get('/:id', async (req, res) => {
     
     res.json({ 
       userId: user._id,
+      name: user.name,
       toneLevel,
-      preferences: user.preferences || {}
+      preferences: user.preferences || {},
+      settings: user.settings || {},
+      bodyInfo: user.bodyInfo || {}
     });
   } catch (error) {
     console.error('Error fetching user profile:', error);
