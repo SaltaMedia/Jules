@@ -9,4 +9,6 @@ services:
         value: production
       - key: FORCE_RESTART
         value: "true"
+      - key: RESTART_TRIGGER
+        value: "ae55075"
     healthCheckPath: /healthz 

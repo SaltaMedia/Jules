@@ -21,8 +21,10 @@ console.log('Starting server...');
 // === FORCE RESTART TEST ===
 console.log('🚨🚨🚨 FORCE RESTART TEST - This should appear on server startup 🚨🚨🚨');
 console.log('🚨🚨🚨 Server started at:', new Date().toISOString());
-console.log('🚨🚨🚨 Git commit: c9f0304 - NODE.JS UPGRADED + ONBOARDING FEATURES');
+console.log('🚨🚨🚨 Git commit: ae55075 - LATEST ONBOARDING FEATURES WITH RESTART');
 console.log('🚨🚨🚨 FORCE_RESTART env var:', process.env.FORCE_RESTART);
+console.log('🚨🚨🚨 Process ID:', process.pid);
+console.log('🚨🚨🚨 Node version:', process.version);
 console.log('🚨🚨🚨 === FORCE RESTART TEST END ===');
 
 const express = require('express');
