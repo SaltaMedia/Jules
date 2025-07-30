@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: jules-backend
+    env: node
+    buildCommand: cd jules-core/jules-backend && npm install
+    startCommand: cd jules-core/jules-backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FORCE_RESTART
+        value: "true"
+      - key: RESTART_TRIGGER
+        value: "250c09a"
+      - key: DEPLOYMENT_TIMESTAMP
+        value: "2025-07-28-21-30"
+      - key: PERSONALITY_FIX
+        value: "true"
+    healthCheckPath: /healthz 
