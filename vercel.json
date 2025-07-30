@@ -1,0 +1,8 @@
+{
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://jules-4ckg.onrender.com"
+  },
+  "buildCommand": "cd jules-core/jules-frontend && npm run build",
+  "outputDirectory": "jules-core/jules-frontend/.next",
+  "framework": "nextjs"
+} 
