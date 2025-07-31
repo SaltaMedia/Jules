@@ -392,8 +392,25 @@ exports.handleChat = async (req, res) => {
       if (!conversation) {
         conversation = new Conversation({ userId, messages: [] });
       }
+      
+      // Check if this is the user's first message (conversation is empty)
+      const isFirstMessage = conversation.messages.length === 0;
+      
       conversation.messages.push({ role: 'user', content: message });
       recentMessages = conversation.messages.slice(-10);
+      
+      // If this is the first message, add a welcome message and return it immediately
+      if (isFirstMessage) {
+        let welcomeMessage;
+        if (user && user.name) {
+          welcomeMessage = `What's up ${user.name}?`;
+        } else {
+          welcomeMessage = "What's up?";
+        }
+        conversation.messages.push({ role: 'assistant', content: welcomeMessage });
+        await conversation.save();
+        return res.json({ reply: welcomeMessage, products: [] });
+      }
     } else {
       // For invalid userIds, just use the current message
       recentMessages = [{ role: 'user', content: message }];
